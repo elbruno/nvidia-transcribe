@@ -35,6 +35,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 - **Scenario folders**: Each scenario has its own folder with `transcribe.py`, `README.md`, and any scenario-specific files
 - **Shared resources**: `requirements.txt`, `fix_lhotse.py`, and `output/` remain in root (shared across scenarios)
 - **Legacy support**: Root `transcribe.py` maintained for backward compatibility
+- **No audio files in repo**: Audio files (`.mp3`, `.wav`, `.flac`) are gitignored; users provide their own
 
 ## Architecture & Scenarios
 

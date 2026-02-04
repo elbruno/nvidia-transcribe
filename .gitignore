@@ -19,3 +19,7 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+# Audio files (keep out of repo)
+*.mp3
+*.wav
+*.flac
