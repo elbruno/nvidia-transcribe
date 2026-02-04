@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "TranscriptionWebApp": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:61518;http://localhost:61519"
+    }
+  }
+}
