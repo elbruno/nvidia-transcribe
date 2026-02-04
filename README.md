@@ -133,6 +133,10 @@ All scenarios generate outputs in the `output/` folder:
 
 📖 **See [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for detailed examples and workflows.**
 
+⚡ **See [QUICKREF.md](QUICKREF.md) for a quick command reference.**
+
+> **Backward Compatibility**: The original `transcribe.py` script is still available and works as before (same as Scenario 2).
+
 ## Supported Audio Formats
 
 | Format | Notes |
