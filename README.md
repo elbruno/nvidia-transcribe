@@ -1,6 +1,6 @@
 # NVIDIA ASR Transcription Toolkit
 
-A Python toolkit for audio transcription using NVIDIA's ASR models. Organized into three scenarios for different use cases:
+A Python toolkit for audio transcription using NVIDIA's ASR models. Organized into four scenarios for different use cases:
 
 ## Scenarios
 
@@ -32,6 +32,22 @@ python scenario3/transcribe.py audio_file.mp3 es  # Spanish
 python scenario3/transcribe.py audio_file.mp3 en  # English
 ```
 
+### Scenario 4: Client-Server Architecture
+**Folder**: [`scenario4/`](scenario4/)  
+**Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
+**Usage**: REST API server with C# console and Blazor web clients
+
+```bash
+# Start server
+cd scenario4/server && uvicorn app:app --host 0.0.0.0 --port 8000
+
+# Use console client
+cd scenario4/clients/console && dotnet run audio.mp3
+
+# Use web client
+cd scenario4/clients/blazor && dotnet run
+```
+
 ## Choosing the Right Scenario
 
 | Your Need | Use This Scenario |
@@ -42,7 +58,11 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
 | 🎓 **Learning / first time user** | Scenario 2 |
 | 🌍 **Spanish audio transcription** | Scenario 3 |
 | 🗣️ **Non-English languages** | Scenario 3 |
-| 💼 **Commercial project** | Scenario 1 or 2 only* |
+| 🌐 **API service / remote transcription** | Scenario 4 |
+| 💻 **C# / .NET integration** | Scenario 4 |
+| 🔗 **Web-based interface** | Scenario 4 |
+| ☁️ **Azure deployment** | Scenario 4 |
+| 💼 **Commercial project** | Scenario 1, 2, or 4* |
 
 \* *Scenario 3 uses Canary-1B which has a non-commercial license (CC-BY-NC-4.0)*
 
