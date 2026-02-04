@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,11 +7,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsAspireHost>true</IsAspireHost>
+    <NoWarn>$(NoWarn);ASPIREHOSTINGPYTHON001;NETSDK1228</NoWarn>
+    <EnableAspireWorkloadDeprecationWarning>false</EnableAspireWorkloadDeprecationWarning>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting" Version="9.0.0" />
-    <PackageReference Include="Aspire.Hosting.Python" Version="9.0.0" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.0" />
+    <PackageReference Include="Aspire.Hosting.Python" Version="13.1.0" />
   </ItemGroup>
 
   <ItemGroup>
