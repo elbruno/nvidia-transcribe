@@ -141,5 +141,26 @@ Second segment text.
 ---
 
 ## Changelog
+- **v1.2** - Added fallback for timestamp errors; requires Python 3.12 (3.13 incompatible)
 - **v1.1** - Added MP3/FLAC to WAV conversion using librosa
 - **v1.0** - Initial release with WAV support
+
+---
+
+## Current Status & Next Steps
+
+**Issue Discovered:** Python 3.13 is incompatible with NeMo toolkit on Windows (causes `object.__init__()` error during transcription).
+
+**Fix Applied:**
+1. Installed Python 3.12.10 via winget
+2. Created new venv with Python 3.12: `py -3.12 -m venv venv`
+
+**To Complete Setup (run manually):**
+```powershell
+cd C:\src\nvidia-labs
+venv\Scripts\activate
+pip install -r requirements.txt
+python transcribe.py
+```
+
+**Note:** First-time dependency installation takes 5-10 minutes due to large packages (torch, nemo_toolkit).
