@@ -23,3 +23,6 @@ Thumbs.db
 *.mp3
 *.wav
 *.flac
+
+# Output directory (generated transcriptions)
+output/
