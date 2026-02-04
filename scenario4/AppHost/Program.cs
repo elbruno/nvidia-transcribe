@@ -7,7 +7,8 @@ var builder = DistributedApplication.CreateBuilder(args);
 // The server is located in the ../server directory
 // IMPORTANT: Requires Python 3.12 virtual environment setup BEFORE running
 // Run: ..\server\setup-venv.ps1 (Windows) or ../server/setup-venv.sh (Linux)
-var apiServer = builder.AddUvicornApp("apiserver", "../server", "app:app", port: 8000)
+var apiServer = builder.AddUvicornApp("apiserver", "../server", "app:app")
+    .WithHttpEndpoint(port: 8000, env: "PORT")
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithVirtualEnvironment(".venv")
