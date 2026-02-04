@@ -96,6 +96,14 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
    pip install torch
    ```
 
+4. **Apply lhotse compatibility fix** (required):
+
+   ```bash
+   python fix_lhotse.py
+   ```
+
+   > ⚠️ This patches a compatibility issue between lhotse and PyTorch 2.10+. Without this fix, transcription will fail with `object.__init__() takes exactly one argument` error.
+
 ## Quick Start
 
 Choose the scenario that fits your needs:
