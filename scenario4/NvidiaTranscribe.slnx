@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/AppHost/">
+    <Project Path="AppHost/NvidiaTranscribe.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/Clients/">
+    <Project Path="clients/console/TranscriptionClient.csproj" />
+    <Project Path="clients/blazor/TranscriptionWebApp.csproj" />
+  </Folder>
+</Solution>
