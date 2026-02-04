@@ -1,26 +1,42 @@
-# Parakeet ASR Transcription Script - Implementation Plan
+# NVIDIA ASR Transcription Toolkit - Implementation Plan
 
 ## Problem Statement
 
-Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model (via NeMo toolkit) to transcribe audio files locally. The app should:
+Create a Python toolkit that uses NVIDIA ASR models to transcribe audio files locally. The toolkit is organized into three scenarios to support different use cases:
 
-- Scan for up to 5 audio files in the script's directory
-- Present them as numbered options to the user (1st file as default)
+1. **Scenario 1**: Simple CLI transcription for single files (Parakeet model, English)
+2. **Scenario 2**: Interactive menu for browsing and selecting files (Parakeet model, English)
+3. **Scenario 3**: Multilingual transcription with language support (Canary-1B model)
+
+All scenarios should:
 - Generate transcripts with timestamps in both `.txt` and `.srt` formats
 - Save outputs to `output/` folder with naming: `{datetime}_{original_filename}.{ext}`
+- Support WAV, FLAC, and MP3 audio formats with auto-conversion
 
 ## Model Details
 
+### Parakeet TDT 0.6B v2 (Scenarios 1 & 2)
 - **Model**: `nvidia/parakeet-tdt-0.6b-v2` (600M parameters)
 - **Framework**: NVIDIA NeMo toolkit
+- **Language**: English only
 - **Input**: 16kHz mono WAV files (auto-converted from MP3/FLAC)
 - **Output**: Transcription with punctuation, capitalization, and word/segment timestamps
 - **License**: CC-BY-4.0 (commercial use allowed)
 - **Requirements**: CUDA GPU recommended (2GB+ VRAM), **Python 3.10-3.12** (3.13 not supported on Windows)
 
+### Canary-1B (Scenario 3)
+- **Model**: `nvidia/canary-1b` (1B parameters)
+- **Framework**: NVIDIA NeMo toolkit
+- **Languages**: Multilingual (English, Spanish, German, French, and more)
+- **Input**: 16kHz mono WAV files (auto-converted from MP3/FLAC)
+- **Output**: Transcription with punctuation, capitalization, and word/segment timestamps
+- **License**: CC-BY-NC-4.0 (non-commercial use only)
+- **Requirements**: CUDA GPU recommended (2GB+ VRAM), Python 3.10-3.12
+
 ## References
 
-- HuggingFace Model: <https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2>
+- Parakeet Model: <https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2>
+- Canary-1B Model: <https://huggingface.co/nvidia/canary-1b>
 - NeMo Documentation: <https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/models.html>
 - Azure Deployment Example: <https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr>
 
@@ -30,7 +46,7 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 
 ### Setup & Dependencies
 
-- [x] Create project folder structure (`C:\src\nvidia-labs`)
+- [x] Create project folder structure
 - [x] Create `requirements.txt` with dependencies:
   - `nemo_toolkit[asr]`
   - `torch` (with CUDA support)
@@ -38,14 +54,34 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
   - `librosa`
 - [x] Create virtual environment setup instructions in README
 
-### Core Implementation
+### Scenario 1: Simple CLI Implementation
 
-- [x] Create `transcribe.py` main script with:
-  - [x] Audio file discovery (scan for .wav, .flac, .mp3 in script directory)
-  - [x] Interactive file selection menu (numbered list, first as default)
-  - [x] Model loading with progress feedback
+- [x] Create `scenario1_simple.py` script with:
+  - [x] Command-line argument parsing for audio file path
+  - [x] Help text and usage instructions
+  - [x] Model loading with progress feedback (Parakeet)
   - [x] Transcription with timestamps enabled
   - [x] Output folder creation (`output/`)
+  - [x] Error handling for missing files and invalid formats
+
+### Scenario 2: Interactive Menu Implementation
+
+- [x] Create `scenario2_interactive.py` (based on original `transcribe.py`) with:
+  - [x] Audio file discovery (scan for .wav, .flac, .mp3 in script directory)
+  - [x] Interactive file selection menu (numbered list, first as default)
+  - [x] Model loading with progress feedback (Parakeet)
+  - [x] Transcription with timestamps enabled
+  - [x] Output folder creation (`output/`)
+
+### Scenario 3: Multilingual Implementation
+
+- [x] Create `scenario3_multilingual.py` script with:
+  - [x] Command-line argument parsing for audio file and language code
+  - [x] Support for multiple languages (es, en, de, fr)
+  - [x] Model loading with Canary-1B
+  - [x] Language-specific transcription
+  - [x] Output with language tags in filenames
+  - [x] Help text explaining language options
   
 ### Audio Processing
 
@@ -70,16 +106,21 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 
 ### Documentation
 
-- [x] Create `README.md` with:
-  - Installation instructions (Python, CUDA, dependencies)
-  - Usage guide
-  - Hardware requirements
-  - Troubleshooting tips
-  - How it works section
+- [x] Update `README.md` with:
+  - [x] Scenario descriptions and usage examples
+  - [x] Model comparison (Parakeet vs Canary-1B)
+  - [x] Installation instructions
+  - [x] Quick start guide for each scenario
+  - [x] Troubleshooting tips
+- [x] Update `PLAN.md` with:
+  - [x] Multi-scenario structure
+  - [x] Implementation details for each scenario
+  - [x] Model specifications
 
 ### Deployment
 
-- [x] Publish to GitHub as private repository
+- [x] Organize repository with scenario-based structure
+- [x] Maintain backward compatibility (keep original `transcribe.py`)
 - [x] Push all changes with proper commit messages
 
 ---
@@ -87,14 +128,19 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 ## File Structure
 
 ```
-C:\src\nvidia-labs\
-├── transcribe.py          # Main application
-├── requirements.txt       # Python dependencies
-├── README.md             # Documentation
-├── PLAN.md               # This implementation plan
-└── output/               # Generated transcripts (auto-created)
-    └── {datetime}_{filename}.txt
-    └── {datetime}_{filename}.srt
+/home/runner/work/nvidia-parakeet-transcribe/nvidia-parakeet-transcribe/
+├── scenario1_simple.py          # Scenario 1: Simple CLI
+├── scenario2_interactive.py     # Scenario 2: Interactive menu
+├── scenario3_multilingual.py    # Scenario 3: Multilingual (Canary-1B)
+├── transcribe.py                # Original script (maintained for compatibility)
+├── requirements.txt             # Python dependencies
+├── README.md                    # Documentation with scenarios
+├── PLAN.md                      # This implementation plan
+├── fix_lhotse.py               # Compatibility fix script
+└── output/                      # Generated transcripts (auto-created)
+    ├── {datetime}_{filename}.txt
+    ├── {datetime}_{filename}.srt
+    └── {datetime}_{filename}_{lang}.txt  # Scenario 3 outputs
 ```
 
 ## Technical Notes
@@ -160,6 +206,12 @@ Second segment text.
 
 ## Changelog
 
+- **v2.0** (Feb 2026) - Multi-scenario implementation
+  - Added Scenario 1: Simple CLI for single file transcription
+  - Added Scenario 2: Interactive menu (renamed from original transcribe.py)
+  - Added Scenario 3: Multilingual support with Canary-1B model
+  - Updated documentation with scenario-based structure
+  - Maintained backward compatibility with original transcribe.py
 - **v1.3** - Fixed lhotse/PyTorch 2.10+ compatibility issue; added fix_lhotse.py script
 - **v1.2** - Added fallback for timestamp errors; requires Python 3.12 (3.13 incompatible)
 - **v1.1** - Added MP3/FLAC to WAV conversion using librosa
@@ -167,25 +219,41 @@ Second segment text.
 
 ---
 
-## Current Status & Next Steps
+## Current Status & Implementation Summary
 
-**Issue Discovered (Feb 2026):** lhotse 1.31.1 is incompatible with PyTorch 2.10+ due to changes in `torch.utils.data.Sampler` signature. This causes `object.__init__() takes exactly one argument` error.
+### Completed (v2.0)
 
-**Fix Applied:**
+✅ **Scenario 1: Simple CLI** - Command-line transcription for single files
+  - Accepts audio file path as argument
+  - Uses Parakeet model for English transcription
+  - Generates TXT and SRT outputs
 
-1. Created `fix_lhotse.py` script to patch the lhotse library after installation
-2. Pinned nemo_toolkit version to 2.6.1 in requirements.txt
-3. Updated documentation with new troubleshooting steps
+✅ **Scenario 2: Interactive Menu** - Browse and select from multiple files
+  - Scans directory for audio files
+  - Presents numbered selection menu
+  - Uses Parakeet model for English transcription
 
-**To Complete Setup (run manually):**
+✅ **Scenario 3: Multilingual** - Language-specific transcription
+  - Accepts audio file and language code
+  - Uses Canary-1B model for multilingual support
+  - Supports Spanish (es), English (en), German (de), French (fr)
+  - Default language: Spanish
 
-```powershell
-cd D:\elbruno\nvidia-parakeet-transcribe
-py -3.12 -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python fix_lhotse.py
-python transcribe.py
-```
+### Key Features Across All Scenarios
 
-**Note:** First-time dependency installation takes 5-10 minutes due to large packages (torch, nemo_toolkit). CPU-only inference is ~10x slower than GPU.
+- ✅ WAV, FLAC, MP3 support with auto-conversion
+- ✅ Timestamp extraction for SRT subtitles
+- ✅ Dual output format (TXT + SRT)
+- ✅ Automatic 16kHz mono WAV conversion
+- ✅ Temporary file cleanup
+- ✅ Comprehensive error handling
+- ✅ Progress feedback during processing
+
+### Model Comparison
+
+| Feature | Parakeet (S1 & S2) | Canary-1B (S3) |
+|---------|-------------------|----------------|
+| Languages | English only | Multilingual |
+| Parameters | 600M | 1B |
+| License | CC-BY-4.0 (commercial) | CC-BY-NC-4.0 (non-commercial) |
+| Use Case | Fast English transcription | Multilingual, Spanish content |
