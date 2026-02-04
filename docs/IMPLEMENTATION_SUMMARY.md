@@ -138,22 +138,32 @@ python scenario3_multilingual.py --help
 ## Repository Structure
 
 ```
-/nvidia-parakeet-transcribe/
-├── scenario1_simple.py          # Scenario 1: Simple CLI
-├── scenario2_interactive.py     # Scenario 2: Interactive menu
-├── scenario3_multilingual.py    # Scenario 3: Multilingual
-├── transcribe.py                # Original (for compatibility)
-├── requirements.txt             # Dependencies
-├── fix_lhotse.py               # Compatibility fix
-├── README.md                    # Main documentation
-├── PLAN.md                      # Implementation plan
-├── USAGE_EXAMPLES.md           # Detailed usage examples
-├── QUICKREF.md                 # Quick reference
-├── IMPLEMENTATION_SUMMARY.md   # This file
-├── output/                     # Output directory
-│   ├── *.txt                   # Transcription files
-│   └── *.srt                   # Subtitle files
-└── *.mp3                       # Sample audio files
+/
+├── README.md                    # Main documentation (only doc in root)
+├── requirements.txt             # Python dependencies
+├── fix_lhotse.py               # Compatibility fix script
+├── transcribe.py               # Original script (backward compatibility)
+├── docs/                       # All documentation
+│   ├── PLAN.md
+│   ├── QUICKREF.md
+│   ├── USAGE_EXAMPLES.md
+│   └── IMPLEMENTATION_SUMMARY.md   # This file
+├── utils/                      # Environment validation tools
+│   ├── check_environment.py   # Validates Python, PyTorch, CUDA
+│   ├── check_models.py        # Shows model download status
+│   └── README.md
+├── scenario1/                  # Scenario 1: Simple CLI
+│   ├── transcribe.py
+│   └── README.md
+├── scenario2/                  # Scenario 2: Interactive menu
+│   ├── transcribe.py
+│   └── README.md
+├── scenario3/                  # Scenario 3: Multilingual
+│   ├── transcribe.py
+│   └── README.md
+└── output/                     # Generated transcripts
+    ├── *.txt                   # Transcription files
+    └── *.srt                   # Subtitle files
 ```
 
 ---

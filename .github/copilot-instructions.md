@@ -17,6 +17,10 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │   ├── QUICKREF.md
 │   ├── USAGE_EXAMPLES.md
 │   └── IMPLEMENTATION_SUMMARY.md
+├── utils/                      # Environment validation tools
+│   ├── check_environment.py   # Validates Python, PyTorch, CUDA, dependencies
+│   ├── check_models.py        # Shows model download status
+│   └── README.md
 ├── scenario1/                  # Simple CLI transcription
 │   ├── transcribe.py
 │   └── README.md
@@ -34,6 +38,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 - **Root README only**: Main `README.md` stays in repo root; all other docs go in `docs/`
 - **Scenario folders**: Each scenario has its own folder with `transcribe.py`, `README.md`, and any scenario-specific files
 - **Shared resources**: `requirements.txt`, `fix_lhotse.py`, and `output/` remain in root (shared across scenarios)
+- **Utils folder**: `utils/` contains environment validation scripts (`check_environment.py`, `check_models.py`)
 - **Legacy support**: Root `transcribe.py` maintained for backward compatibility
 - **No audio files in repo**: Audio files (`.mp3`, `.wav`, `.flac`) are gitignored; users provide their own
 
@@ -50,6 +55,7 @@ Root `transcribe.py` is the original script (same as scenario2) - kept for backw
 ## Critical Constraints
 
 - **Python 3.10-3.12 only** - Python 3.13 is NOT supported due to NeMo/lhotse incompatibility
+- **Install PyTorch with CUDA first** - Before `pip install -r requirements.txt` to ensure GPU support
 - **Run `python fix_lhotse.py` after installation** - Patches lhotse for PyTorch 2.10+ compatibility
 - **Audio max length: 24 minutes** - Model limitation per file
 - Canary-1B license is **non-commercial (CC-BY-NC-4.0)** - Parakeet allows commercial use
@@ -99,10 +105,12 @@ When extending functionality:
 ## Development Setup
 
 ```bash
-py -3.12 -m venv venv        # Must use Python 3.12 (not 3.13)
-venv\Scripts\activate         # Windows
+py -3.12 -m venv venv              # Must use Python 3.12 (not 3.13)
+venv\Scripts\activate               # Windows
+pip install torch --index-url https://download.pytorch.org/whl/cu121  # GPU support
 pip install -r requirements.txt
-python fix_lhotse.py          # Required post-install fix
+python fix_lhotse.py                # Required post-install fix
+python utils/check_environment.py  # Validate setup
 ```
 
 ## Testing

@@ -76,25 +76,27 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
    source venv/bin/activate
    ```
 
-2. **Install dependencies**:
+2. **Install PyTorch** (choose GPU or CPU version):
+
+   **With NVIDIA GPU** (recommended for 10x faster transcription):
+   ```bash
+   pip install torch --index-url https://download.pytorch.org/whl/cu121
+   ```
+
+   **CPU-only** (slower but works without GPU):
+   ```bash
+   pip install torch
+   ```
+
+   > ⚠️ Install PyTorch FIRST, before other dependencies. This ensures the correct CUDA version is used.
+
+3. **Install remaining dependencies**:
 
    ```bash
    pip install -r requirements.txt
    ```
 
    > ⚠️ First-time installation takes 5-10 minutes due to large packages.
-
-3. **Install PyTorch with CUDA** (if you have an NVIDIA GPU):
-
-   ```bash
-   pip install torch --index-url https://download.pytorch.org/whl/cu121
-   ```
-
-   For CPU-only (slower but works without GPU):
-
-   ```bash
-   pip install torch
-   ```
 
 4. **Apply lhotse compatibility fix** (required):
 
@@ -103,6 +105,14 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
    ```
 
    > ⚠️ This patches a compatibility issue between lhotse and PyTorch 2.10+. Without this fix, transcription will fail with `object.__init__() takes exactly one argument` error.
+
+5. **Validate your environment** (optional but recommended):
+
+   ```bash
+   python utils/check_environment.py
+   ```
+
+   This checks Python version, CUDA/GPU status, and all dependencies. See [`utils/`](utils/) for more validation tools.
 
 ## Quick Start
 

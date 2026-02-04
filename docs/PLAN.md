@@ -128,16 +128,30 @@ All scenarios should:
 ## File Structure
 
 ```
-/home/runner/work/nvidia-parakeet-transcribe/nvidia-parakeet-transcribe/
-├── scenario1_simple.py          # Scenario 1: Simple CLI
-├── scenario2_interactive.py     # Scenario 2: Interactive menu
-├── scenario3_multilingual.py    # Scenario 3: Multilingual (Canary-1B)
-├── transcribe.py                # Original script (maintained for compatibility)
+/
+├── README.md                    # Main documentation
 ├── requirements.txt             # Python dependencies
-├── README.md                    # Documentation with scenarios
-├── PLAN.md                      # This implementation plan
 ├── fix_lhotse.py               # Compatibility fix script
-└── output/                      # Generated transcripts (auto-created)
+├── transcribe.py               # Original script (backward compatibility)
+├── docs/                       # All documentation except main README
+│   ├── PLAN.md                 # This implementation plan
+│   ├── QUICKREF.md
+│   ├── USAGE_EXAMPLES.md
+│   └── IMPLEMENTATION_SUMMARY.md
+├── utils/                      # Environment validation tools
+│   ├── check_environment.py   # Validates Python, PyTorch, CUDA
+│   ├── check_models.py        # Shows model download status
+│   └── README.md
+├── scenario1/                  # Scenario 1: Simple CLI
+│   ├── transcribe.py
+│   └── README.md
+├── scenario2/                  # Scenario 2: Interactive menu
+│   ├── transcribe.py
+│   └── README.md
+├── scenario3/                  # Scenario 3: Multilingual (Canary-1B)
+│   ├── transcribe.py
+│   └── README.md
+└── output/                     # Generated transcripts (auto-created)
     ├── {datetime}_{filename}.txt
     ├── {datetime}_{filename}.srt
     └── {datetime}_{filename}_{lang}.txt  # Scenario 3 outputs

@@ -42,6 +42,15 @@ python scenario3/transcribe.py --help
 python transcribe.py
 ```
 
+## Environment Validation
+```bash
+# Check Python, PyTorch, CUDA, dependencies
+python utils/check_environment.py
+
+# Check model download status
+python utils/check_models.py
+```
+
 ## Output Location
 All transcriptions are saved to: `output/`
 

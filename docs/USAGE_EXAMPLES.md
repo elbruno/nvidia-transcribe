@@ -8,8 +8,10 @@ Before running any scenario, ensure you have:
 
 1. Installed Python 3.10-3.12 (3.13 not supported on Windows)
 2. Created and activated a virtual environment
-3. Installed dependencies: `pip install -r requirements.txt`
-4. (Optional) Run `python fix_lhotse.py` if you encounter compatibility issues
+3. Installed PyTorch with CUDA (for GPU): `pip install torch --index-url https://download.pytorch.org/whl/cu121`
+4. Installed dependencies: `pip install -r requirements.txt`
+5. Applied lhotse fix: `python fix_lhotse.py`
+6. (Optional) Validated your environment: `python utils/check_environment.py`
 
 ## Scenario 1: Simple CLI Transcription
 
