@@ -1,0 +1,4 @@
+nemo_toolkit[asr]
+torch
+soundfile
+librosa
