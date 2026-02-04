@@ -13,24 +13,29 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 
 ## Requirements
 
-- Python 3.8+
+- **Python 3.10 - 3.12** (Python 3.13 is NOT supported on Windows)
 - NVIDIA GPU with CUDA support (recommended, 2GB+ VRAM)
 - ~2.5GB disk space for model download
 - CPU-only mode supported (slower)
 
 ## Installation
 
-1. **Create a virtual environment** (recommended):
+1. **Create a virtual environment with Python 3.12** (recommended):
    ```bash
-   python -m venv venv
-   venv\Scripts\activate  # Windows
-   # source venv/bin/activate  # Linux/macOS
+   # Windows - use Python 3.12 specifically
+   py -3.12 -m venv venv
+   venv\Scripts\activate
+   
+   # Linux/macOS
+   python3.12 -m venv venv
+   source venv/bin/activate
    ```
 
 2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
+   > ⚠️ First-time installation takes 5-10 minutes due to large packages.
 
 3. **Install PyTorch with CUDA** (if you have an NVIDIA GPU):
    ```bash
@@ -95,6 +100,15 @@ transcription with punctuation.
 ```
 
 ## Troubleshooting
+
+### "object.__init__() takes exactly one argument" error
+- **Cause**: Python 3.13 is incompatible with NeMo toolkit on Windows
+- **Fix**: Use Python 3.12 instead:
+  ```bash
+  py -3.12 -m venv venv
+  venv\Scripts\activate
+  pip install -r requirements.txt
+  ```
 
 ### "No audio files found"
 - Ensure audio files are in the same directory as `transcribe.py`

@@ -13,7 +13,7 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 - **Input**: 16kHz mono WAV files (auto-converted from MP3/FLAC)
 - **Output**: Transcription with punctuation, capitalization, and word/segment timestamps
 - **License**: CC-BY-4.0 (commercial use allowed)
-- **Requirements**: CUDA GPU recommended (2GB+ VRAM), Python 3.8+
+- **Requirements**: CUDA GPU recommended (2GB+ VRAM), **Python 3.10-3.12** (3.13 not supported on Windows)
 
 ## References
 - HuggingFace Model: https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
