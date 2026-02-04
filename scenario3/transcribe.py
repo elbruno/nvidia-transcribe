@@ -53,8 +53,13 @@ def seconds_to_srt_time(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
 
-def generate_srt(segments: list[dict]) -> str:
-    """Generate SRT subtitle content from segment timestamps."""
+def generate_srt(segments: list[dict], full_text: str = "") -> str:
+    """Generate SRT subtitle content from segment timestamps.
+    If no segments available, creates a single entry with full text."""
+    if not segments and full_text:
+        # No timestamps available - create single subtitle with full text
+        return f"1\n00:00:00,000 --> 00:00:00,000\n{full_text.strip()}\n"
+    
     srt_lines = []
     for i, seg in enumerate(segments, 1):
         start = seconds_to_srt_time(seg['start'])
@@ -97,7 +102,7 @@ def save_outputs(text: str, segments: list[dict], audio_file: Path, output_dir: 
     srt_path = output_dir / f"{timestamp}_{base_name}_{language}.srt"
     
     txt_content = generate_txt(text, segments, language)
-    srt_content = generate_srt(segments)
+    srt_content = generate_srt(segments, text)
     
     txt_path.write_text(txt_content, encoding='utf-8')
     srt_path.write_text(srt_content, encoding='utf-8')
@@ -217,39 +222,38 @@ def main():
     segments = []
     
     try:
-        # Canary-1B supports language-specific transcription
-        # Try with timestamps and language specification
+        # Canary-1B does NOT support timestamps (AED model limitation)
+        # Use source_lang and target_lang for proper language handling
         output = asr_model.transcribe(
             [str(audio_for_transcription)],
-            timestamps=True,
-            language=language
+            batch_size=1,
+            num_workers=0,  # Avoid Windows file locking issues
+            source_lang=language,
+            target_lang=language,
+            pnc="yes",  # Punctuation and capitalization
+            task="asr",  # Automatic speech recognition
         )
-        text = output[0].text
-        segments = output[0].timestamp.get('segment', [])
-    except TypeError:
-        # Fallback if language parameter not supported in this way
-        print("\nRetrying without language parameter...")
-        try:
-            output = asr_model.transcribe([str(audio_for_transcription)], timestamps=True)
-            text = output[0].text
-            segments = output[0].timestamp.get('segment', [])
-        except Exception as e:
-            print(f"\nTimestamp extraction failed: {e}")
-            print("Retrying without timestamps...")
-            try:
-                output = asr_model.transcribe([str(audio_for_transcription)])
-                text = output[0] if isinstance(output[0], str) else output[0].text
-                segments = []
-            except Exception as e2:
-                print(f"\nTranscription error: {e2}")
-                sys.exit(1)
+        
+        # Handle different output formats
+        if isinstance(output[0], str):
+            text = output[0]
+        else:
+            text = output[0].text if hasattr(output[0], 'text') else str(output[0])
+        
+        # Canary-1B doesn't provide timestamps, so segments remain empty
+        segments = []
+        print("\nNote: Canary-1B does not support timestamps. SRT will contain full text only.")
+        
     except Exception as e:
         print(f"\nTranscription error: {e}")
         sys.exit(1)
     finally:
         # Clean up temp file
         if temp_wav and temp_wav.exists():
-            temp_wav.unlink()
+            try:
+                temp_wav.unlink()
+            except PermissionError:
+                pass  # Ignore if file is still locked
     
     # Save outputs
     txt_path, srt_path = save_outputs(text, segments, audio_path, output_dir, language)
