@@ -19,6 +19,7 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
 # Audio files (keep out of repo)
 *.mp3
 *.wav
@@ -26,3 +27,27 @@ Thumbs.db
 
 # Output directory (generated transcriptions)
 output/
+
+# C# / .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.csproj.user
+[Dd]ebug/
+[Rr]elease/
+[Pp]ublish/
+
+# Blazor
+wwwroot/dist/
+.vs/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp

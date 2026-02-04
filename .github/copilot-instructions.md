@@ -30,6 +30,19 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 ├── scenario3/                  # Multilingual transcription
 │   ├── transcribe.py
 │   └── README.md
+├── scenario4/                  # Client-server architecture
+│   ├── server/                # Python FastAPI server
+│   │   ├── app.py
+│   │   ├── requirements.txt
+│   │   ├── Dockerfile
+│   │   └── README.md
+│   ├── clients/
+│   │   ├── console/          # C# console client
+│   │   └── blazor/           # Blazor web app client
+│   ├── README.md
+│   ├── QUICKREF.md
+│   ├── USAGE_EXAMPLES.md
+│   └── AZURE_DEPLOYMENT.md
 └── output/                     # Shared output directory
 ```
 
@@ -49,6 +62,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 | `scenario1/` | Parakeet (English) | CLI for single file transcription |
 | `scenario2/` | Parakeet (English) | Interactive menu to select from local audio files |
 | `scenario3/` | Canary-1B (Multilingual) | Language-specific transcription (es, en, de, fr) |
+| `scenario4/` | Parakeet (English) | Client-server architecture with REST API |
 
 Root `transcribe.py` is the original script (same as scenario2) - kept for backward compatibility.
 
@@ -101,6 +115,33 @@ When extending functionality:
 3. Include timestamp fallback (some models/configs may fail timestamp extraction)
 4. Clean up temp WAV files in a `finally` block
 5. Use `Path(__file__).parent.resolve() / "output"` for output directory
+
+### Scenario 4 (Client-Server) Patterns
+
+When extending the client-server architecture:
+1. **Server**: Use FastAPI patterns with async/await
+2. **Clients**: Follow REST API conventions with proper error handling
+3. **CORS**: Enable for web clients, configure appropriately for production
+4. **Docker**: Maintain multi-stage builds with CUDA support
+5. **Azure**: Use Container Apps for serverless deployment
+
+**Server Pattern:**
+```python
+@app.post("/endpoint")
+async def endpoint(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    # 1. Validate input
+    # 2. Process file
+    # 3. Schedule cleanup
+    # 4. Return response
+```
+
+**Client Pattern (C#):**
+```csharp
+using var form = new MultipartFormDataContent();
+using var fileContent = new StreamContent(fileStream);
+form.Add(fileContent, "file", fileName);
+var response = await client.PostAsync(url, form);
+```
 
 ## Development Setup
 

@@ -1,0 +1,149 @@
+@page "/"
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="container">
+    <h1>🎙️ NVIDIA ASR Transcription</h1>
+    
+    <div class="upload-section">
+        <h3>Upload Audio File</h3>
+        <p>Supported formats: WAV, MP3, FLAC</p>
+        
+        <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" />
+        
+        @if (!string.IsNullOrEmpty(selectedFileName))
+        {
+            <p>Selected: <strong>@selectedFileName</strong></p>
+            <button class="btn" @onclick="TranscribeAudio" disabled="@isProcessing">
+                @(isProcessing ? "Processing..." : "Transcribe")
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error">
+            ⚠️ @errorMessage
+        </div>
+    }
+
+    @if (isProcessing)
+    {
+        <div class="loading">
+            <p>⏳ Transcribing audio... This may take a moment.</p>
+        </div>
+    }
+
+    @if (transcriptionResult != null)
+    {
+        <div class="result-section">
+            <h2>✅ Transcription Complete</h2>
+            
+            <div style="margin-bottom: 20px;">
+                <strong>File:</strong> @transcriptionResult.filename<br/>
+                <strong>Timestamp:</strong> @transcriptionResult.timestamp
+            </div>
+
+            <h3>Full Text</h3>
+            <div style="padding: 15px; background: white; border-radius: 5px; white-space: pre-wrap;">
+                @transcriptionResult.text
+            </div>
+
+            @if (transcriptionResult.segments != null && transcriptionResult.segments.Length > 0)
+            {
+                <h3>Segments (@transcriptionResult.segments.Length)</h3>
+                @foreach (var segment in transcriptionResult.segments.Take(10))
+                {
+                    <div class="segment">
+                        <div class="timestamp">[@FormatTime(segment.start) - @FormatTime(segment.end)]</div>
+                        <div>@segment.text</div>
+                    </div>
+                }
+                @if (transcriptionResult.segments.Length > 10)
+                {
+                    <p style="text-align: center; color: #666;">... and @(transcriptionResult.segments.Length - 10) more segments</p>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private IBrowserFile? selectedFile;
+    private string selectedFileName = string.Empty;
+    private bool isProcessing = false;
+    private string errorMessage = string.Empty;
+    private TranscriptionResponse? transcriptionResult;
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        selectedFileName = e.File.Name;
+        errorMessage = string.Empty;
+        transcriptionResult = null;
+    }
+
+    private async Task TranscribeAudio()
+    {
+        if (selectedFile == null) return;
+
+        isProcessing = true;
+        errorMessage = string.Empty;
+        transcriptionResult = null;
+
+        try
+        {
+            // Create multipart form content
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(selectedFile.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024)); // 50MB max
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
+            content.Add(fileContent, "file", selectedFile.Name);
+
+            // Send request
+            var response = await Http.PostAsync("/transcribe", content);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                transcriptionResult = JsonSerializer.Deserialize<TranscriptionResponse>(json, 
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            else
+            {
+                errorMessage = $"Server error: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string FormatTime(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        return ts.ToString(@"hh\:mm\:ss\.fff");
+    }
+
+    // Response models
+    private class TranscriptionResponse
+    {
+        public string text { get; set; } = string.Empty;
+        public Segment[] segments { get; set; } = Array.Empty<Segment>();
+        public string filename { get; set; } = string.Empty;
+        public string timestamp { get; set; } = string.Empty;
+    }
+
+    private class Segment
+    {
+        public double start { get; set; }
+        public double end { get; set; }
+        public string text { get; set; } = string.Empty;
+    }
+}

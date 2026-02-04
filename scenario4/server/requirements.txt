@@ -1,0 +1,7 @@
+fastapi==0.109.1
+uvicorn[standard]==0.27.0
+python-multipart==0.0.22
+nemo_toolkit[asr]==1.23.0
+torch>=2.0.0
+soundfile==0.12.1
+librosa==0.10.1
