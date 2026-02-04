@@ -286,7 +286,7 @@ python scenario3_multilingual.py audio.mp3 es
 
 ### Models downloading slowly
 
-**Note**: First run downloads models (~1.2GB for Parakeet, ~1.5GB for Canary-1B). This is a one-time download. Models are cached at `~/.cache/huggingface/` for subsequent runs.
+**Note**: First run downloads models (~1.2GB for Parakeet, ~1.5GB for Canary-1B). This is a one-time download per model. Models are cached at `~/.cache/huggingface/hub/` and **shared across all scenarios** - running scenario1, scenario2, or the root `transcribe.py` all use the same cached Parakeet model. No duplicate downloads occur.
 
 ---
 

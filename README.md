@@ -207,8 +207,9 @@ transcription with punctuation.
 
 ### "Model download slow"
 
-- First run downloads ~2.5GB model from Hugging Face
-- Model is cached locally at `~/.cache/huggingface/` after first download
+- First run downloads ~1.2-1.5GB model from Hugging Face
+- Models are cached at `~/.cache/huggingface/hub/` and shared across all scenarios
+- Subsequent runs load from cache instantly
 
 ### CPU-only mode
 
@@ -231,6 +232,15 @@ If no GPU is available, the model runs on CPU (much slower). No configuration ne
 - **Max audio length**: 24 minutes per file
 - **License**: CC-BY-NC-4.0 (non-commercial use only)
 - **Use case**: Multilingual transcription, ideal for Spanish content
+
+### Model Caching
+
+Models are downloaded once and cached centrally at `~/.cache/huggingface/hub/`. All scenarios share this cache:
+
+- **First run** of any scenario → Downloads model (~1.2GB Parakeet, ~1.5GB Canary-1B)
+- **Subsequent runs** of any scenario → Loads from cache (fast, no download)
+
+This means running `scenario1/transcribe.py`, `scenario2/transcribe.py`, or the root `transcribe.py` all use the same cached Parakeet model. No duplicate downloads occur.
 
 ## How It Works
 
