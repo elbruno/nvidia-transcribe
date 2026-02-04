@@ -6,12 +6,34 @@ Uses NVIDIA's parakeet-tdt-0.6b-v2 model to transcribe audio files locally.
 
 import os
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
+
+import librosa
+import soundfile as sf
 
 # Supported audio extensions
 AUDIO_EXTENSIONS = {'.wav', '.flac', '.mp3'}
 MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"
+TARGET_SAMPLE_RATE = 16000
+
+
+def convert_to_wav(audio_path: Path) -> Path:
+    """Convert audio file to 16kHz mono WAV for model compatibility."""
+    print(f"Converting {audio_path.name} to 16kHz WAV...")
+    
+    # Load audio with librosa (handles MP3, FLAC, WAV, etc.)
+    audio, sr = librosa.load(str(audio_path), sr=TARGET_SAMPLE_RATE, mono=True)
+    
+    # Create temp WAV file
+    temp_dir = Path(tempfile.gettempdir())
+    temp_wav = temp_dir / f"parakeet_temp_{audio_path.stem}.wav"
+    
+    # Save as 16kHz mono WAV
+    sf.write(str(temp_wav), audio, TARGET_SAMPLE_RATE)
+    
+    return temp_wav
 
 
 def find_audio_files(directory: Path, max_files: int = 5) -> list[Path]:
@@ -123,6 +145,14 @@ def main():
     selected_file = audio_files[selected_idx]
     print(f"\nSelected: {selected_file.name}")
     
+    # Convert audio to WAV if needed (MP3, non-16kHz, etc.)
+    temp_wav = None
+    audio_for_transcription = selected_file
+    
+    if selected_file.suffix.lower() != '.wav':
+        temp_wav = convert_to_wav(selected_file)
+        audio_for_transcription = temp_wav
+    
     # Load model
     print("\nLoading Parakeet ASR model...")
     print("(First run will download ~1.2GB model)")
@@ -146,12 +176,16 @@ def main():
     print("This may take a moment...")
     
     try:
-        output = asr_model.transcribe([str(selected_file)], timestamps=True)
+        output = asr_model.transcribe([str(audio_for_transcription)], timestamps=True)
         text = output[0].text
         segments = output[0].timestamp.get('segment', [])
     except Exception as e:
         print(f"\nTranscription error: {e}")
         sys.exit(1)
+    finally:
+        # Clean up temp file
+        if temp_wav and temp_wav.exists():
+            temp_wav.unlink()
     
     # Save outputs
     txt_path, srt_path = save_outputs(text, segments, selected_file, output_dir)
