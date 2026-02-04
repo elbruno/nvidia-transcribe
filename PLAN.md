@@ -1,13 +1,16 @@
 # Parakeet ASR Transcription Script - Implementation Plan
 
 ## Problem Statement
+
 Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model (via NeMo toolkit) to transcribe audio files locally. The app should:
+
 - Scan for up to 5 audio files in the script's directory
 - Present them as numbered options to the user (1st file as default)
 - Generate transcripts with timestamps in both `.txt` and `.srt` formats
 - Save outputs to `output/` folder with naming: `{datetime}_{original_filename}.{ext}`
 
 ## Model Details
+
 - **Model**: `nvidia/parakeet-tdt-0.6b-v2` (600M parameters)
 - **Framework**: NVIDIA NeMo toolkit
 - **Input**: 16kHz mono WAV files (auto-converted from MP3/FLAC)
@@ -16,15 +19,17 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 - **Requirements**: CUDA GPU recommended (2GB+ VRAM), **Python 3.10-3.12** (3.13 not supported on Windows)
 
 ## References
-- HuggingFace Model: https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
-- NeMo Documentation: https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/models.html
-- Azure Deployment Example: https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr
+
+- HuggingFace Model: <https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2>
+- NeMo Documentation: <https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/models.html>
+- Azure Deployment Example: <https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr>
 
 ---
 
 ## Workplan
 
 ### Setup & Dependencies
+
 - [x] Create project folder structure (`C:\src\nvidia-labs`)
 - [x] Create `requirements.txt` with dependencies:
   - `nemo_toolkit[asr]`
@@ -34,6 +39,7 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 - [x] Create virtual environment setup instructions in README
 
 ### Core Implementation
+
 - [x] Create `transcribe.py` main script with:
   - [x] Audio file discovery (scan for .wav, .flac, .mp3 in script directory)
   - [x] Interactive file selection menu (numbered list, first as default)
@@ -42,12 +48,14 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
   - [x] Output folder creation (`output/`)
   
 ### Audio Processing
+
 - [x] Implement audio format conversion using librosa:
   - [x] Convert MP3/FLAC to 16kHz mono WAV
   - [x] Create temp file for conversion
   - [x] Clean up temp files after transcription
 
 ### Output Generation
+
 - [x] Implement `.txt` output formatter:
   - Include full text and segment-level timestamps
 - [x] Implement `.srt` subtitle formatter:
@@ -55,11 +63,13 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
 - [x] File naming: `{YYYYMMDD_HHMMSS}_{original_name}.{txt|srt}`
 
 ### User Experience
+
 - [x] Add progress indicators during model loading/transcription
 - [x] Handle errors gracefully (no audio files, invalid format, GPU issues)
 - [x] Display transcription summary when complete
 
 ### Documentation
+
 - [x] Create `README.md` with:
   - Installation instructions (Python, CUDA, dependencies)
   - Usage guide
@@ -68,12 +78,14 @@ Create a Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` mo
   - How it works section
 
 ### Deployment
+
 - [x] Publish to GitHub as private repository
 - [x] Push all changes with proper commit messages
 
 ---
 
 ## File Structure
+
 ```
 C:\src\nvidia-labs\
 ├── transcribe.py          # Main application
@@ -88,7 +100,9 @@ C:\src\nvidia-labs\
 ## Technical Notes
 
 ### Audio Conversion
+
 MP3 and FLAC files are converted to 16kHz mono WAV before transcription:
+
 ```python
 import librosa
 import soundfile as sf
@@ -98,6 +112,7 @@ sf.write(temp_wav_path, audio, 16000)
 ```
 
 ### Sample Code Pattern
+
 ```python
 import nemo.collections.asr as nemo_asr
 
@@ -112,6 +127,7 @@ segment_timestamps = output[0].timestamp['segment']
 ```
 
 ### SRT Format Example
+
 ```
 1
 00:00:00,000 --> 00:00:03,500
@@ -123,6 +139,7 @@ Second segment text.
 ```
 
 ### Supported Audio Formats
+
 - `.wav` - Native format (16kHz mono recommended)
 - `.flac` - Auto-converted via librosa
 - `.mp3` - Auto-converted via librosa
@@ -130,6 +147,7 @@ Second segment text.
 ---
 
 ## Risks & Mitigations
+
 | Risk | Mitigation |
 |------|------------|
 | No CUDA GPU available | CPU fallback works automatically (slower) |
@@ -141,6 +159,8 @@ Second segment text.
 ---
 
 ## Changelog
+
+- **v1.3** - Fixed lhotse/PyTorch 2.10+ compatibility issue; added fix_lhotse.py script
 - **v1.2** - Added fallback for timestamp errors; requires Python 3.12 (3.13 incompatible)
 - **v1.1** - Added MP3/FLAC to WAV conversion using librosa
 - **v1.0** - Initial release with WAV support
@@ -149,18 +169,23 @@ Second segment text.
 
 ## Current Status & Next Steps
 
-**Issue Discovered:** Python 3.13 is incompatible with NeMo toolkit on Windows (causes `object.__init__()` error during transcription).
+**Issue Discovered (Feb 2026):** lhotse 1.31.1 is incompatible with PyTorch 2.10+ due to changes in `torch.utils.data.Sampler` signature. This causes `object.__init__() takes exactly one argument` error.
 
 **Fix Applied:**
-1. Installed Python 3.12.10 via winget
-2. Created new venv with Python 3.12: `py -3.12 -m venv venv`
+
+1. Created `fix_lhotse.py` script to patch the lhotse library after installation
+2. Pinned nemo_toolkit version to 2.6.1 in requirements.txt
+3. Updated documentation with new troubleshooting steps
 
 **To Complete Setup (run manually):**
+
 ```powershell
-cd C:\src\nvidia-labs
+cd D:\elbruno\nvidia-parakeet-transcribe
+py -3.12 -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+python fix_lhotse.py
 python transcribe.py
 ```
 
-**Note:** First-time dependency installation takes 5-10 minutes due to large packages (torch, nemo_toolkit).
+**Note:** First-time dependency installation takes 5-10 minutes due to large packages (torch, nemo_toolkit). CPU-only inference is ~10x slower than GPU.

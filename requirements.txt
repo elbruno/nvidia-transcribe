@@ -1,4 +1,7 @@
-nemo_toolkit[asr]
-torch
+nemo_toolkit[asr]==2.6.1
+torch>=2.0.0
 soundfile
 librosa
+
+# Note: If you encounter "object.__init__() takes exactly one argument" error,
+# run the post-install fix: python fix_lhotse.py

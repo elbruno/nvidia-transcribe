@@ -21,6 +21,7 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 ## Installation
 
 1. **Create a virtual environment with Python 3.12** (recommended):
+
    ```bash
    # Windows - use Python 3.12 specifically
    py -3.12 -m venv venv
@@ -32,17 +33,21 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
    ```
 
 2. **Install dependencies**:
+
    ```bash
    pip install -r requirements.txt
    ```
+
    > ⚠️ First-time installation takes 5-10 minutes due to large packages.
 
 3. **Install PyTorch with CUDA** (if you have an NVIDIA GPU):
+
    ```bash
    pip install torch --index-url https://download.pytorch.org/whl/cu121
    ```
 
    For CPU-only (slower but works without GPU):
+
    ```bash
    pip install torch
    ```
@@ -52,6 +57,7 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 1. Place audio files (`.wav`, `.flac`, `.mp3`) in the same folder as `transcribe.py`
 
 2. Run the script:
+
    ```bash
    python transcribe.py
    ```
@@ -75,6 +81,7 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 ## Output Examples
 
 ### TXT Output
+
 ```
 TRANSCRIPTION
 ==================================================
@@ -89,6 +96,7 @@ TIMESTAMPS
 ```
 
 ### SRT Output
+
 ```
 1
 00:00:00,000 --> 00:00:03,500
@@ -101,32 +109,40 @@ transcription with punctuation.
 
 ## Troubleshooting
 
-### "object.__init__() takes exactly one argument" error
-- **Cause**: Python 3.13 is incompatible with NeMo toolkit on Windows
-- **Fix**: Use Python 3.12 instead:
+### "object.**init**() takes exactly one argument" error
+
+- **Cause**: Incompatibility between lhotse and PyTorch 2.10+ (or Python 3.13+)
+- **Fix**: After installing dependencies, run the fix script:
+
   ```bash
   py -3.12 -m venv venv
   venv\Scripts\activate
   pip install -r requirements.txt
+  python fix_lhotse.py
   ```
 
 ### "No audio files found"
+
 - Ensure audio files are in the same directory as `transcribe.py`
 - Check file extensions (`.wav`, `.flac`, `.mp3`)
 
 ### "CUDA out of memory"
+
 - Close other GPU-intensive applications
 - Try with shorter audio files (<10 minutes)
 
 ### "CUDA is not available" warning
+
 - This is normal on CPU-only systems
 - Transcription will still work, just slower
 
 ### "Model download slow"
+
 - First run downloads ~2.5GB model from Hugging Face
 - Model is cached locally at `~/.cache/huggingface/` after first download
 
 ### CPU-only mode
+
 If no GPU is available, the model runs on CPU (much slower). No configuration needed - it falls back automatically. Expect ~10x slower transcription times.
 
 ## Model Information
