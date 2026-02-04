@@ -70,7 +70,9 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
    # Windows - use Python 3.12 specifically
    py -3.12 -m venv venv
    venv\Scripts\activate
-   
+   ```
+
+   ```bash
    # Linux/macOS
    python3.12 -m venv venv
    source venv/bin/activate
