@@ -5,35 +5,35 @@ Quick commands for each scenario:
 ## Scenario 1: Simple CLI
 ```bash
 # Basic usage
-python scenario1_simple.py audio.mp3
+python scenario1/transcribe.py audio.mp3
 
 # Help
-python scenario1_simple.py --help
+python scenario1/transcribe.py --help
 ```
 
 ## Scenario 2: Interactive Menu
 ```bash
 # Run interactive menu
-python scenario2_interactive.py
+python scenario2/transcribe.py
 ```
 
 ## Scenario 3: Multilingual
 ```bash
 # Spanish (default)
-python scenario3_multilingual.py audio.mp3
-python scenario3_multilingual.py audio.mp3 es
+python scenario3/transcribe.py audio.mp3
+python scenario3/transcribe.py audio.mp3 es
 
 # English
-python scenario3_multilingual.py audio.mp3 en
+python scenario3/transcribe.py audio.mp3 en
 
 # German
-python scenario3_multilingual.py audio.mp3 de
+python scenario3/transcribe.py audio.mp3 de
 
 # French
-python scenario3_multilingual.py audio.mp3 fr
+python scenario3/transcribe.py audio.mp3 fr
 
 # Help
-python scenario3_multilingual.py --help
+python scenario3/transcribe.py --help
 ```
 
 ## Backward Compatibility

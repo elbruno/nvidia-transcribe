@@ -21,13 +21,13 @@ Before running any scenario, ensure you have:
 
 ```bash
 # Transcribe a single file
-python scenario1_simple.py audio_file.mp3
+python scenario1/transcribe.py audio_file.mp3
 
 # Transcribe with full path
-python scenario1_simple.py /path/to/my/audio.wav
+python scenario1/transcribe.py /path/to/my/audio.wav
 
 # Get help
-python scenario1_simple.py --help
+python scenario1/transcribe.py --help
 ```
 
 ### Expected Output
@@ -76,13 +76,13 @@ Preview (XXX characters):
 
 ### Setup
 
-Place your audio files (`.wav`, `.flac`, `.mp3`) in the same directory as the script.
+Place your audio files (`.wav`, `.flac`, `.mp3`) in the repository root directory.
 
 ### Basic Usage
 
 ```bash
 # Run the interactive script
-python scenario2_interactive.py
+python scenario2/transcribe.py
 ```
 
 ### Interactive Flow
@@ -128,22 +128,22 @@ Same format as Scenario 1, with interactive file selection before transcription.
 
 ```bash
 # Transcribe Spanish audio (default language)
-python scenario3_multilingual.py spanish_audio.mp3
+python scenario3/transcribe.py spanish_audio.mp3
 
 # Explicitly specify Spanish
-python scenario3_multilingual.py spanish_audio.mp3 es
+python scenario3/transcribe.py spanish_audio.mp3 es
 
 # Transcribe English audio
-python scenario3_multilingual.py english_audio.mp3 en
+python scenario3/transcribe.py english_audio.mp3 en
 
 # Transcribe German audio
-python scenario3_multilingual.py german_audio.mp3 de
+python scenario3/transcribe.py german_audio.mp3 de
 
 # Transcribe French audio
-python scenario3_multilingual.py french_audio.mp3 fr
+python scenario3/transcribe.py french_audio.mp3 fr
 
 # Get help
-python scenario3_multilingual.py --help
+python scenario3/transcribe.py --help
 ```
 
 ### Supported Languages
@@ -224,7 +224,7 @@ Preview (XXX characters):
 ```bash
 # Process multiple files in a script
 for file in audio1.mp3 audio2.mp3 audio3.mp3; do
-    python scenario1_simple.py "$file"
+    python scenario1/transcribe.py "$file"
 done
 ```
 
@@ -232,23 +232,23 @@ done
 
 ```bash
 # Transcribe English content
-python scenario3_multilingual.py intro_english.mp3 en
+python scenario3/transcribe.py intro_english.mp3 en
 
 # Transcribe Spanish content
-python scenario3_multilingual.py interview_spanish.mp3 es
+python scenario3/transcribe.py interview_spanish.mp3 es
 
 # Transcribe German content
-python scenario3_multilingual.py outro_german.mp3 de
+python scenario3/transcribe.py outro_german.mp3 de
 ```
 
 ### Example 3: Interactive Workflow
 
 ```bash
 # Use scenario 2 for initial browsing
-python scenario2_interactive.py
+python scenario2/transcribe.py
 
 # Then use scenario 1 for specific files
-python scenario1_simple.py selected_file.mp3
+python scenario1/transcribe.py selected_file.mp3
 ```
 
 ---

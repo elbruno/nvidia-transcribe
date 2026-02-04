@@ -5,31 +5,31 @@ A Python toolkit for audio transcription using NVIDIA's ASR models. Organized in
 ## Scenarios
 
 ### Scenario 1: Simple CLI Transcription
-**File**: `scenario1_simple.py`  
+**Folder**: [`scenario1/`](scenario1/)  
 **Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
 **Usage**: Command-line interface for quick transcription of a single file
 
 ```bash
-python scenario1_simple.py audio_file.mp3
+python scenario1/transcribe.py audio_file.mp3
 ```
 
 ### Scenario 2: Interactive Menu Transcription
-**File**: `scenario2_interactive.py`  
+**Folder**: [`scenario2/`](scenario2/)  
 **Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
-**Usage**: Interactive menu to select from multiple audio files in the directory
+**Usage**: Interactive menu to select from multiple audio files in the repository
 
 ```bash
-python scenario2_interactive.py
+python scenario2/transcribe.py
 ```
 
 ### Scenario 3: Multilingual Transcription
-**File**: `scenario3_multilingual.py`  
+**Folder**: [`scenario3/`](scenario3/)  
 **Model**: nvidia/canary-1b (Multilingual)  
 **Usage**: Supports Spanish, English, German, French and more
 
 ```bash
-python scenario3_multilingual.py audio_file.mp3 es  # Spanish
-python scenario3_multilingual.py audio_file.mp3 en  # English
+python scenario3/transcribe.py audio_file.mp3 es  # Spanish
+python scenario3/transcribe.py audio_file.mp3 en  # English
 ```
 
 ## Choosing the Right Scenario
@@ -103,27 +103,27 @@ Choose the scenario that fits your needs:
 ### Scenario 1: Simple CLI (Single File)
 ```bash
 # Transcribe a specific audio file (English only)
-python scenario1_simple.py my_audio.mp3
+python scenario1/transcribe.py my_audio.mp3
 ```
 **Best for**: Command-line workflows, batch processing, automation
 
 ### Scenario 2: Interactive Menu (Multiple Files)
 ```bash
-# Browse and select from audio files in directory (English only)
-python scenario2_interactive.py
+# Browse and select from audio files in repository root (English only)
+python scenario2/transcribe.py
 ```
 **Best for**: Exploring multiple files, manual selection, beginners
 
 ### Scenario 3: Multilingual Support
 ```bash
 # Transcribe Spanish audio
-python scenario3_multilingual.py spanish_audio.mp3 es
+python scenario3/transcribe.py spanish_audio.mp3 es
 
 # Transcribe English audio
-python scenario3_multilingual.py english_audio.mp3 en
+python scenario3/transcribe.py english_audio.mp3 en
 
 # Default is Spanish (es)
-python scenario3_multilingual.py audio.mp3
+python scenario3/transcribe.py audio.mp3
 ```
 **Best for**: Non-English content, Spanish transcription, multilingual projects
 
@@ -131,9 +131,9 @@ All scenarios generate outputs in the `output/` folder:
 - `{timestamp}_{filename}.txt` - Full transcription with timestamps
 - `{timestamp}_{filename}.srt` - Subtitle file for video editors
 
-📖 **See [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for detailed examples and workflows.**
+📖 **See [docs/USAGE_EXAMPLES.md](docs/USAGE_EXAMPLES.md) for detailed examples and workflows.**
 
-⚡ **See [QUICKREF.md](QUICKREF.md) for a quick command reference.**
+⚡ **See [docs/QUICKREF.md](docs/QUICKREF.md) for a quick command reference.**
 
 > **Backward Compatibility**: The original `transcribe.py` script is still available and works as before (same as Scenario 2).
 
@@ -192,7 +192,7 @@ transcription with punctuation.
 
 ### "No audio files found"
 
-- Ensure audio files are in the same directory as `transcribe.py`
+- Ensure audio files are in the repository root directory
 - Check file extensions (`.wav`, `.flac`, `.mp3`)
 
 ### "CUDA out of memory"
@@ -243,7 +243,7 @@ If no GPU is available, the model runs on CPU (much slower). No configuration ne
 6. Cleans up temporary files
 
 ### Scenario 2: Interactive Menu
-1. Scans the script directory for up to 5 audio files
+1. Scans the repository root for up to 5 audio files
 2. Presents an interactive selection menu
 3. Converts non-WAV files to 16kHz mono WAV (using librosa)
 4. Loads the Parakeet ASR model via NeMo toolkit

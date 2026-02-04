@@ -128,16 +128,17 @@ def save_outputs(text: str, segments: list[dict], audio_file: Path, output_dir: 
 
 def main():
     script_dir = Path(__file__).parent.resolve()
-    output_dir = script_dir / "output"
+    repo_root = script_dir.parent
+    output_dir = repo_root / "output"
     
-    # Find audio files
+    # Find audio files in repo root
     print("\nScanning for audio files...")
-    audio_files = find_audio_files(script_dir)
+    audio_files = find_audio_files(repo_root)
     
     if not audio_files:
-        print("\nNo audio files found in the script directory.")
+        print("\nNo audio files found in the repository root.")
         print(f"Supported formats: {', '.join(AUDIO_EXTENSIONS)}")
-        print(f"Directory: {script_dir}")
+        print(f"Directory: {repo_root}")
         sys.exit(1)
     
     # Select audio file

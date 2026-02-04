@@ -4,15 +4,47 @@
 
 This toolkit provides local audio transcription using NVIDIA ASR models via the NeMo framework. It offers three scenarios with shared patterns for different use cases.
 
+## Repository Structure
+
+```
+/
+├── README.md                    # Main readme (only doc in root)
+├── requirements.txt             # Shared dependencies
+├── fix_lhotse.py               # Post-install compatibility fix
+├── transcribe.py               # Legacy script (backward compatibility)
+├── docs/                       # All documentation except main README
+│   ├── PLAN.md
+│   ├── QUICKREF.md
+│   ├── USAGE_EXAMPLES.md
+│   └── IMPLEMENTATION_SUMMARY.md
+├── scenario1/                  # Simple CLI transcription
+│   ├── transcribe.py
+│   └── README.md
+├── scenario2/                  # Interactive menu transcription
+│   ├── transcribe.py
+│   └── README.md
+├── scenario3/                  # Multilingual transcription
+│   ├── transcribe.py
+│   └── README.md
+└── output/                     # Shared output directory
+```
+
+### Structure Conventions
+
+- **Root README only**: Main `README.md` stays in repo root; all other docs go in `docs/`
+- **Scenario folders**: Each scenario has its own folder with `transcribe.py`, `README.md`, and any scenario-specific files
+- **Shared resources**: `requirements.txt`, `fix_lhotse.py`, and `output/` remain in root (shared across scenarios)
+- **Legacy support**: Root `transcribe.py` maintained for backward compatibility
+
 ## Architecture & Scenarios
 
-| Script | Model | Use Case |
+| Folder | Model | Use Case |
 |--------|-------|----------|
-| `scenario1_simple.py` | Parakeet (English) | CLI for single file transcription |
-| `scenario2_interactive.py` | Parakeet (English) | Interactive menu to select from local audio files |
-| `scenario3_multilingual.py` | Canary-1B (Multilingual) | Language-specific transcription (es, en, de, fr) |
+| `scenario1/` | Parakeet (English) | CLI for single file transcription |
+| `scenario2/` | Parakeet (English) | Interactive menu to select from local audio files |
+| `scenario3/` | Canary-1B (Multilingual) | Language-specific transcription (es, en, de, fr) |
 
-`transcribe.py` is the original script (same as scenario2) - kept for backward compatibility.
+Root `transcribe.py` is the original script (same as scenario2) - kept for backward compatibility.
 
 ## Critical Constraints
 
@@ -76,9 +108,9 @@ python fix_lhotse.py          # Required post-install fix
 
 No formal test suite. Manual testing:
 ```bash
-python scenario1_simple.py test_short.mp3
-python scenario2_interactive.py  # Select from menu
-python scenario3_multilingual.py test_short.mp3 en
+python scenario1/transcribe.py test_short.mp3
+python scenario2/transcribe.py  # Select from menu
+python scenario3/transcribe.py test_short.mp3 en
 ```
 
 Outputs appear in `output/` directory with `.txt` and `.srt` files.
