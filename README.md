@@ -9,12 +9,14 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 - **Dual output** - Generates both `.txt` and `.srt` (subtitle) files
 - **Timestamps** - Includes segment-level timestamps for subtitles
 - **High accuracy** - 600M parameter model with punctuation and capitalization
+- **Auto-conversion** - MP3/FLAC files automatically converted to 16kHz WAV
 
 ## Requirements
 
 - Python 3.8+
 - NVIDIA GPU with CUDA support (recommended, 2GB+ VRAM)
-- ~1.2GB disk space for model download
+- ~2.5GB disk space for model download
+- CPU-only mode supported (slower)
 
 ## Installation
 
@@ -30,9 +32,14 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
    pip install -r requirements.txt
    ```
 
-3. **Install PyTorch with CUDA** (if not already installed):
+3. **Install PyTorch with CUDA** (if you have an NVIDIA GPU):
    ```bash
    pip install torch --index-url https://download.pytorch.org/whl/cu121
+   ```
+
+   For CPU-only (slower but works without GPU):
+   ```bash
+   pip install torch
    ```
 
 ## Usage
@@ -54,9 +61,11 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
 
 | Format | Notes |
 |--------|-------|
-| `.wav` | Best quality, 16kHz mono recommended |
-| `.flac` | Lossless compression |
-| `.mp3` | Converted automatically via librosa |
+| `.wav` | Native format, 16kHz mono recommended |
+| `.flac` | Auto-converted to 16kHz WAV via librosa |
+| `.mp3` | Auto-converted to 16kHz WAV via librosa |
+
+> **Note**: Non-WAV files are automatically converted to 16kHz mono WAV before transcription. The temporary file is cleaned up after processing.
 
 ## Output Examples
 
@@ -95,12 +104,16 @@ transcription with punctuation.
 - Close other GPU-intensive applications
 - Try with shorter audio files (<10 minutes)
 
+### "CUDA is not available" warning
+- This is normal on CPU-only systems
+- Transcription will still work, just slower
+
 ### "Model download slow"
-- First run downloads ~1.2GB model from Hugging Face
-- Model is cached locally after first download
+- First run downloads ~2.5GB model from Hugging Face
+- Model is cached locally at `~/.cache/huggingface/` after first download
 
 ### CPU-only mode
-If no GPU is available, the model runs on CPU (much slower). No configuration needed - it falls back automatically.
+If no GPU is available, the model runs on CPU (much slower). No configuration needed - it falls back automatically. Expect ~10x slower transcription times.
 
 ## Model Information
 
@@ -109,7 +122,18 @@ If no GPU is available, the model runs on CPU (much slower). No configuration ne
 - **Max audio length**: 24 minutes per file
 - **License**: CC-BY-4.0 (commercial use allowed)
 
+## How It Works
+
+1. Scans the script directory for up to 5 audio files
+2. Presents an interactive selection menu
+3. Converts non-WAV files to 16kHz mono WAV (using librosa)
+4. Loads the Parakeet ASR model via NeMo toolkit
+5. Transcribes with timestamp extraction
+6. Generates `.txt` and `.srt` output files
+7. Cleans up temporary files
+
 ## References
 
 - [Hugging Face Model Card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2)
 - [NeMo ASR Documentation](https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/models.html)
+- [Azure Deployment Example](https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr)
