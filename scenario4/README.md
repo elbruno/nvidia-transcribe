@@ -2,6 +2,8 @@
 
 A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized FastAPI application, and clients (C# console and Blazor web app) communicate with it via REST API.
 
+**NEW**: Now with .NET Aspire orchestration support for simplified development and deployment!
+
 ## Architecture
 
 ```
@@ -12,70 +14,47 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
                                               │  NVIDIA ASR      │
 ┌─────────────────┐         HTTP/REST        │  (Parakeet)      │
 │  Blazor Web     │────────────────────────▶│                  │
-│  App            │                          │  Docker          │
+│  App            │                          │  Docker/Aspire   │
 └─────────────────┘                          └──────────────────┘
 ```
 
-## Components
+## Quick Start Options
 
-### Server (Python + FastAPI)
-- FastAPI REST API with `/transcribe` endpoint
-- NVIDIA Parakeet ASR model integration
-- Supports WAV, MP3, and FLAC audio formats
-- Returns JSON with transcription text and timestamps
-- Containerized with Docker for easy deployment
+### Option 1: Using .NET Aspire (Recommended for Development)
 
-### Console Client (C#)
-- Command-line application for transcription
-- Upload audio files via API
-- Display results in terminal
+Start the entire stack with orchestration, service discovery, and monitoring:
 
-### Web Client (Blazor WebAssembly)
-- Browser-based UI for transcription
-- Drag-and-drop file upload
-- Real-time results display
-
-## Quick Start
-
-### 1. Start the Server
-
-**Local Development:**
 ```bash
-cd scenario4/server
-pip install -r requirements.txt
-python fix_lhotse.py  # Apply compatibility fix
-uvicorn app:app --host 0.0.0.0 --port 8000
+cd scenario4/AppHost
+dotnet run
 ```
 
-**Docker:**
+This launches:
+- Aspire dashboard with logs and metrics
+- Python FastAPI server
+- Console client (ready to use)
+- Blazor web client
+
+**Benefits**: Unified development experience, automatic service discovery, integrated monitoring.
+
+See [AppHost/README.md](AppHost/README.md) for detailed Aspire instructions.
+
+### Option 2: Docker (Recommended for Production)
+
 ```bash
 cd scenario4/server
 docker build -t nvidia-asr-server .
 docker run -p 8000:8000 --gpus all nvidia-asr-server
 ```
 
-The server will be available at `http://localhost:8000`
-
-### 2. Use the Console Client (C#)
+### Option 3: Local Development (Manual)
 
 ```bash
-cd scenario4/clients/console
-dotnet run audio_file.mp3
+cd scenario4/server
+pip install -r requirements.txt
+python ../../fix_lhotse.py  # Apply compatibility fix
+uvicorn app:app --host 0.0.0.0 --port 8000
 ```
-
-Optional: Specify custom API URL:
-```bash
-dotnet run audio_file.mp3 http://server:8000
-```
-
-### 3. Use the Web Client (Blazor)
-
-```bash
-cd scenario4/clients/blazor
-dotnet run
-```
-
-Then open your browser to the displayed URL (typically `http://localhost:5000`)
 
 ## API Endpoints
 
@@ -167,7 +146,25 @@ Update the API URL in clients to point to your Azure Container App URL.
 
 ## Development
 
-### Server Development
+### Option A: Using .NET Aspire (Recommended)
+
+Aspire provides unified orchestration and monitoring:
+
+```bash
+cd scenario4/AppHost
+dotnet run
+```
+
+Benefits:
+- All services start with one command
+- Automatic service discovery
+- Unified dashboard with logs, metrics, and traces
+- Hot reload for rapid development
+
+See [AppHost/README.md](AppHost/README.md) for detailed instructions.
+
+### Option B: Manual Server Development
+
 ```bash
 cd scenario4/server
 python -m venv venv
@@ -179,16 +176,20 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Console Client Development
+
 ```bash
 cd scenario4/clients/console
 dotnet build
 dotnet run -- ../../test_audio.mp3
+# Or when using Aspire, the client auto-discovers the server
 ```
 
 ### Web Client Development
+
 ```bash
 cd scenario4/clients/blazor
 dotnet watch run
+# Or run via Aspire for automatic server discovery
 ```
 
 ## Security Considerations
