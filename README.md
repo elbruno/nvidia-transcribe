@@ -1,14 +1,58 @@
-# Parakeet ASR Transcription
+# NVIDIA ASR Transcription Toolkit
 
-A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to transcribe audio files locally with timestamp support.
+A Python toolkit for audio transcription using NVIDIA's ASR models. Organized into three scenarios for different use cases:
+
+## Scenarios
+
+### Scenario 1: Simple CLI Transcription
+**File**: `scenario1_simple.py`  
+**Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
+**Usage**: Command-line interface for quick transcription of a single file
+
+```bash
+python scenario1_simple.py audio_file.mp3
+```
+
+### Scenario 2: Interactive Menu Transcription
+**File**: `scenario2_interactive.py`  
+**Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
+**Usage**: Interactive menu to select from multiple audio files in the directory
+
+```bash
+python scenario2_interactive.py
+```
+
+### Scenario 3: Multilingual Transcription
+**File**: `scenario3_multilingual.py`  
+**Model**: nvidia/canary-1b (Multilingual)  
+**Usage**: Supports Spanish, English, German, French and more
+
+```bash
+python scenario3_multilingual.py audio_file.mp3 es  # Spanish
+python scenario3_multilingual.py audio_file.mp3 en  # English
+```
+
+## Choosing the Right Scenario
+
+| Your Need | Use This Scenario |
+|-----------|------------------|
+| 🚀 **Quick transcription of a single English file** | Scenario 1 |
+| 🤖 **Batch processing / automation** | Scenario 1 |
+| 📁 **Browse and select from multiple files** | Scenario 2 |
+| 🎓 **Learning / first time user** | Scenario 2 |
+| 🌍 **Spanish audio transcription** | Scenario 3 |
+| 🗣️ **Non-English languages** | Scenario 3 |
+| 💼 **Commercial project** | Scenario 1 or 2 only* |
+
+\* *Scenario 3 uses Canary-1B which has a non-commercial license (CC-BY-NC-4.0)*
 
 ## Features
 
 - **Local inference** - No API calls, runs entirely on your machine
-- **Interactive selection** - Scans for audio files and presents a selection menu
+- **Multiple models** - Choose between Parakeet (English) or Canary-1B (Multilingual)
 - **Dual output** - Generates both `.txt` and `.srt` (subtitle) files
 - **Timestamps** - Includes segment-level timestamps for subtitles
-- **High accuracy** - 600M parameter model with punctuation and capitalization
+- **High accuracy** - Models with punctuation and capitalization
 - **Auto-conversion** - MP3/FLAC files automatically converted to 16kHz WAV
 
 ## Requirements
@@ -52,21 +96,46 @@ A Python console application that uses NVIDIA's `parakeet-tdt-0.6b-v2` model to 
    pip install torch
    ```
 
-## Usage
+## Quick Start
 
-1. Place audio files (`.wav`, `.flac`, `.mp3`) in the same folder as `transcribe.py`
+Choose the scenario that fits your needs:
 
-2. Run the script:
+### Scenario 1: Simple CLI (Single File)
+```bash
+# Transcribe a specific audio file (English only)
+python scenario1_simple.py my_audio.mp3
+```
+**Best for**: Command-line workflows, batch processing, automation
 
-   ```bash
-   python transcribe.py
-   ```
+### Scenario 2: Interactive Menu (Multiple Files)
+```bash
+# Browse and select from audio files in directory (English only)
+python scenario2_interactive.py
+```
+**Best for**: Exploring multiple files, manual selection, beginners
 
-3. Select an audio file from the menu (press Enter for default)
+### Scenario 3: Multilingual Support
+```bash
+# Transcribe Spanish audio
+python scenario3_multilingual.py spanish_audio.mp3 es
 
-4. Find outputs in the `output/` folder:
-   - `{datetime}_{filename}.txt` - Full transcription with timestamps
-   - `{datetime}_{filename}.srt` - Subtitle file for video editors
+# Transcribe English audio
+python scenario3_multilingual.py english_audio.mp3 en
+
+# Default is Spanish (es)
+python scenario3_multilingual.py audio.mp3
+```
+**Best for**: Non-English content, Spanish transcription, multilingual projects
+
+All scenarios generate outputs in the `output/` folder:
+- `{timestamp}_{filename}.txt` - Full transcription with timestamps
+- `{timestamp}_{filename}.srt` - Subtitle file for video editors
+
+📖 **See [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for detailed examples and workflows.**
+
+⚡ **See [QUICKREF.md](QUICKREF.md) for a quick command reference.**
+
+> **Backward Compatibility**: The original `transcribe.py` script is still available and works as before (same as Scenario 2).
 
 ## Supported Audio Formats
 
@@ -147,13 +216,33 @@ If no GPU is available, the model runs on CPU (much slower). No configuration ne
 
 ## Model Information
 
+### Parakeet TDT 0.6B v2 (Scenarios 1 & 2)
 - **Model**: [nvidia/parakeet-tdt-0.6b-v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2)
+- **Language**: English only
 - **Parameters**: 600M
 - **Max audio length**: 24 minutes per file
 - **License**: CC-BY-4.0 (commercial use allowed)
+- **Use case**: Fast, accurate English transcription
+
+### Canary-1B (Scenario 3)
+- **Model**: [nvidia/canary-1b](https://huggingface.co/nvidia/canary-1b)
+- **Languages**: Multilingual (English, Spanish, German, French, and more)
+- **Parameters**: 1B
+- **Max audio length**: 24 minutes per file
+- **License**: CC-BY-NC-4.0 (non-commercial use only)
+- **Use case**: Multilingual transcription, ideal for Spanish content
 
 ## How It Works
 
+### Scenario 1: Simple CLI
+1. Accepts audio file path as command-line argument
+2. Converts non-WAV files to 16kHz mono WAV (using librosa)
+3. Loads the Parakeet ASR model via NeMo toolkit
+4. Transcribes with timestamp extraction
+5. Generates `.txt` and `.srt` output files
+6. Cleans up temporary files
+
+### Scenario 2: Interactive Menu
 1. Scans the script directory for up to 5 audio files
 2. Presents an interactive selection menu
 3. Converts non-WAV files to 16kHz mono WAV (using librosa)
@@ -161,6 +250,14 @@ If no GPU is available, the model runs on CPU (much slower). No configuration ne
 5. Transcribes with timestamp extraction
 6. Generates `.txt` and `.srt` output files
 7. Cleans up temporary files
+
+### Scenario 3: Multilingual
+1. Accepts audio file path and optional language code
+2. Converts non-WAV files to 16kHz mono WAV (using librosa)
+3. Loads the Canary-1B multilingual model via NeMo toolkit
+4. Transcribes with language-specific processing
+5. Generates `.txt` and `.srt` output files with language tag
+6. Cleans up temporary files
 
 ## References
 
