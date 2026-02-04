@@ -175,13 +175,25 @@ def main():
     print(f"\nTranscribing: {selected_file.name}")
     print("This may take a moment...")
     
+    text = ""
+    segments = []
+    
     try:
+        # Try with timestamps first
         output = asr_model.transcribe([str(audio_for_transcription)], timestamps=True)
         text = output[0].text
         segments = output[0].timestamp.get('segment', [])
     except Exception as e:
-        print(f"\nTranscription error: {e}")
-        sys.exit(1)
+        print(f"\nTimestamp extraction failed: {e}")
+        print("Retrying without timestamps...")
+        try:
+            # Fallback: transcribe without timestamps
+            output = asr_model.transcribe([str(audio_for_transcription)])
+            text = output[0] if isinstance(output[0], str) else output[0].text
+            segments = []
+        except Exception as e2:
+            print(f"\nTranscription error: {e2}")
+            sys.exit(1)
     finally:
         # Clean up temp file
         if temp_wav and temp_wav.exists():
