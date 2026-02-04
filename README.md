@@ -32,6 +32,20 @@ python scenario3_multilingual.py audio_file.mp3 es  # Spanish
 python scenario3_multilingual.py audio_file.mp3 en  # English
 ```
 
+## Choosing the Right Scenario
+
+| Your Need | Use This Scenario |
+|-----------|------------------|
+| 🚀 **Quick transcription of a single English file** | Scenario 1 |
+| 🤖 **Batch processing / automation** | Scenario 1 |
+| 📁 **Browse and select from multiple files** | Scenario 2 |
+| 🎓 **Learning / first time user** | Scenario 2 |
+| 🌍 **Spanish audio transcription** | Scenario 3 |
+| 🗣️ **Non-English languages** | Scenario 3 |
+| 💼 **Commercial project** | Scenario 1 or 2 only* |
+
+\* *Scenario 3 uses Canary-1B which has a non-commercial license (CC-BY-NC-4.0)*
+
 ## Features
 
 - **Local inference** - No API calls, runs entirely on your machine
@@ -91,12 +105,14 @@ Choose the scenario that fits your needs:
 # Transcribe a specific audio file (English only)
 python scenario1_simple.py my_audio.mp3
 ```
+**Best for**: Command-line workflows, batch processing, automation
 
 ### Scenario 2: Interactive Menu (Multiple Files)
 ```bash
 # Browse and select from audio files in directory (English only)
 python scenario2_interactive.py
 ```
+**Best for**: Exploring multiple files, manual selection, beginners
 
 ### Scenario 3: Multilingual Support
 ```bash
@@ -109,10 +125,13 @@ python scenario3_multilingual.py english_audio.mp3 en
 # Default is Spanish (es)
 python scenario3_multilingual.py audio.mp3
 ```
+**Best for**: Non-English content, Spanish transcription, multilingual projects
 
 All scenarios generate outputs in the `output/` folder:
 - `{timestamp}_{filename}.txt` - Full transcription with timestamps
 - `{timestamp}_{filename}.srt` - Subtitle file for video editors
+
+📖 **See [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md) for detailed examples and workflows.**
 
 ## Supported Audio Formats
 
