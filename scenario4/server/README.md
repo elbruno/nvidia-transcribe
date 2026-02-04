@@ -13,20 +13,66 @@ FastAPI-based REST API server for audio transcription using NVIDIA Parakeet mode
 
 ## Requirements
 
-- Python 3.10-3.12 (Python 3.13 not supported)
+- Python 3.10-3.12 (Python 3.13+ is **NOT** supported due to NeMo/lhotse incompatibility)
 - NVIDIA GPU with CUDA support (recommended)
 - Docker (for containerized deployment)
 
 ## Installation
 
-### Local Development
+### Quick Setup (Windows - Recommended)
 
-1. **Create virtual environment:**
+Run the setup script which handles Python 3.12 venv creation, PyTorch CUDA installation, and all dependencies:
+
+```powershell
+cd scenario4\server
+.\setup-venv.ps1
+```
+
+For CPU-only installation:
+```powershell
+.\setup-venv.ps1 -CpuOnly
+```
+
+### Manual Setup (Windows)
+
+1. **Create virtual environment with Python 3.12:**
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+```
+
+2. **Install PyTorch with CUDA:**
+```powershell
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
+
+3. **Install Windows-specific dependencies:**
+```powershell
+pip install -r requirements-windows.txt
+```
+
+4. **Install NeMo toolkit (without triton on Windows):**
+```powershell
+pip install nemo_toolkit[asr] --no-deps
+pip install hydra-core omegaconf pytorch-lightning webdataset huggingface-hub onnx tqdm
+```
+
+5. **Apply lhotse compatibility fix:**
+```powershell
+python ..\..\fix_lhotse.py
+```
+
+6. **Start the server:**
+```powershell
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+### Manual Setup (Linux/macOS)
+
+1. **Create virtual environment with Python 3.12:**
 ```bash
-python3.12 -m venv venv
-source venv/bin/activate  # Linux/macOS
-# or
-venv\Scripts\activate  # Windows
+python3.12 -m venv .venv
+source .venv/bin/activate
 ```
 
 2. **Install PyTorch with CUDA:**
@@ -50,6 +96,24 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
 The server will be available at `http://localhost:8000`
+
+### .NET Aspire Integration
+
+When running with .NET Aspire AppHost, the virtual environment must be set up **before** running `dotnet run`:
+
+1. **Set up the Python environment first:**
+```powershell
+cd scenario4\server
+.\setup-venv.ps1
+```
+
+2. **Then run Aspire:**
+```powershell
+cd ..\AppHost
+dotnet run
+```
+
+The Aspire host is configured to use the `.venv` virtual environment in the server directory.
 
 ### Docker Deployment
 

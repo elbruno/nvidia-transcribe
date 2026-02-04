@@ -1,7 +1,11 @@
 fastapi==0.109.1
 uvicorn[standard]==0.27.0
 python-multipart==0.0.22
-nemo_toolkit[asr]==1.23.0
 torch>=2.0.0
 soundfile==0.12.1
 librosa==0.10.1
+
+# Install nemo_toolkit separately after torch:
+# Windows: pip install nemo_toolkit[asr] --no-deps && pip install hydra-core omegaconf pytorch-lightning wandb webdataset
+# Linux:   pip install nemo_toolkit[asr]
+nemo_toolkit[asr]; sys_platform != "win32"

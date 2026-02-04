@@ -22,10 +22,15 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 
 ### Option 1: Using .NET Aspire (Recommended for Development)
 
-Start the entire stack with orchestration, service discovery, and monitoring:
+**IMPORTANT**: Set up the Python 3.12 environment FIRST before running Aspire:
 
-```bash
-cd scenario4/AppHost
+```powershell
+# Step 1: Set up Python environment (only needed once)
+cd scenario4/server
+.\setup-venv.ps1
+
+# Step 2: Start Aspire
+cd ../AppHost
 dotnet run
 ```
 
@@ -49,10 +54,15 @@ docker run -p 8000:8000 --gpus all nvidia-asr-server
 
 ### Option 3: Local Development (Manual)
 
-```bash
+```powershell
 cd scenario4/server
-pip install -r requirements.txt
-python ../../fix_lhotse.py  # Apply compatibility fix
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements-windows.txt
+pip install nemo_toolkit[asr] --no-deps
+pip install hydra-core omegaconf pytorch-lightning webdataset huggingface-hub onnx tqdm
+python ../../fix_lhotse.py
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
@@ -131,7 +141,7 @@ Update the API URL in clients to point to your Azure Container App URL.
 ## Requirements
 
 ### Server
-- Python 3.10-3.12
+- **Python 3.10-3.12** (Python 3.13+ is NOT supported due to NeMo/lhotse incompatibility)
 - NVIDIA GPU with CUDA support (recommended)
 - Docker (for containerized deployment)
 - See `server/requirements.txt` for Python dependencies
@@ -165,10 +175,19 @@ See [AppHost/README.md](AppHost/README.md) for detailed instructions.
 
 ### Option B: Manual Server Development
 
+**Windows:**
+```powershell
+cd scenario4/server
+.\setup-venv.ps1  # Or follow manual steps in server/README.md
+.venv\Scripts\activate
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Linux/macOS:**
 ```bash
 cd scenario4/server
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install torch --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
 python ../../fix_lhotse.py
@@ -208,9 +227,15 @@ dotnet watch run
 ## Troubleshooting
 
 ### Server won't start
-- Ensure Python 3.10-3.12 is installed (not 3.13)
+- Ensure Python 3.10-3.12 is installed (Python 3.13+ is NOT supported)
+- On Windows, use `py -3.12` to ensure correct version
 - Run `python fix_lhotse.py` after installing dependencies
 - Check CUDA installation for GPU support
+
+### "No matching distribution found for triton"
+- This is a Windows-specific issue (triton is Linux-only)
+- Use `requirements-windows.txt` or the `setup-venv.ps1` script
+- Install NeMo with `--no-deps` flag on Windows
 
 ### Clients can't connect
 - Verify server is running on the expected port

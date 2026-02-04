@@ -1,0 +1,19 @@
+# Windows-specific requirements for scenario4 server
+# IMPORTANT: Requires Python 3.10-3.12 (Python 3.13+ not supported by NeMo)
+
+fastapi==0.109.1
+uvicorn[standard]==0.27.0
+python-multipart==0.0.22
+torch>=2.0.0
+soundfile==0.12.1
+librosa==0.10.1
+
+# NeMo dependencies (triton not available on Windows)
+hydra-core>=1.3.0
+omegaconf>=2.3
+pytorch-lightning>=2.0.0
+webdataset>=0.2.0
+huggingface-hub
+onnx>=1.7.0
+numpy>=1.22
+tqdm>=4.41.0
