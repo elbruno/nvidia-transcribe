@@ -5,6 +5,9 @@ torch>=2.0.0
 soundfile==0.12.1
 librosa==0.10.1
 
+# Azure monitoring (optional - for Application Insights support)
+opencensus-ext-azure==1.1.13
+
 # Install nemo_toolkit separately after torch:
 # Windows: pip install nemo_toolkit[asr] --no-deps && pip install hydra-core omegaconf pytorch-lightning wandb webdataset
 # Linux:   pip install nemo_toolkit[asr]
