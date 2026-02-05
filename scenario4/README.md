@@ -22,6 +22,8 @@ The transcription interface provides:
 - Timestamp segments
 - Metadata (filename, processing time)
 
+**Note**: The webapp uses extended HTTP timeouts (5 minutes) to handle long-running transcription operations without timing out. See [OPTION2_IMPLEMENTATION.md](OPTION2_IMPLEMENTATION.md) for details.
+
 ## ⚡ GPU Configuration
 
 **Important**: By default, GPU acceleration is enabled in the AppHost configuration, but requires NVIDIA Container Toolkit on the host machine.
@@ -328,6 +330,13 @@ Then navigate to the Aspire dashboard to access the web client.
 - Check audio file format (WAV, MP3, or FLAC)
 - Verify file is not corrupted
 - Check server logs for detailed error messages
+
+### HTTP request timeout during transcription
+- **RESOLVED**: The webapp now uses extended HTTP resilience timeouts (5 minutes)
+- This handles long-running transcription operations (especially on CPU)
+- Configuration is in `ServiceDefaults/Extensions.cs`
+- After updating, restart Aspire: `cd AppHost && dotnet run`
+- See [OPTION2_IMPLEMENTATION.md](OPTION2_IMPLEMENTATION.md) for technical details
 
 ### First startup is very slow
 - This is expected - the Parakeet model (~1.2GB) is being downloaded from Hugging Face
