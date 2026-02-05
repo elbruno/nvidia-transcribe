@@ -7,117 +7,77 @@
 <div class="transcribe-container">
     <h1>🎙️ Audio Transcription</h1>
     
-    <div class="upload-section">
-        <h3>Upload Audio File</h3>
-        <p class="supported-formats">Supported formats: WAV, MP3, FLAC (max 50MB)</p>
-        
-        <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
-             @ondragenter="HandleDragEnter"
-             @ondragleave="HandleDragLeave"
-             @ondragover:preventDefault
-             @ondrop="HandleDrop">
-            <InputFile id="file-input" 
-                       OnChange="HandleFileSelected" 
-                       accept=".wav,.mp3,.flac"
-                       class="@(string.IsNullOrEmpty(selectedFileName) ? "visible-input" : "hidden-input")" />
-            <div class="drop-zone-content">
-                <span class="upload-icon">📁</span>
-                <p>Drag and drop your audio file here or click to browse</p>
+    <!-- Section 1: File Selection (Always Visible) -->
+    <div class="section section-file">
+        <h2>📁 Select Audio File</h2>
+        <div class="file-selection-content">
+            <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
+                 @ondragenter="HandleDragEnter"
+                 @ondragleave="HandleDragLeave"
+                 @ondragover:preventDefault
+                 @ondrop="HandleDrop">
+                <InputFile id="file-input" 
+                           OnChange="HandleFileSelected" 
+                           accept=".wav,.mp3,.flac"
+                           style="display: none;" />
+                <label for="file-input" class="file-select-label">
+                    <span class="upload-icon">📁</span>
+                    <span class="upload-text">Click to select a file or drag and drop here</span>
+                    <span class="supported-formats">Supported: WAV, MP3, FLAC (max 50MB)</span>
+                </label>
             </div>
-        </div>
-
-        @if (!string.IsNullOrEmpty(selectedFileName))
-        {
-            <div class="file-selected-container">
-                <div class="file-preview">
-                    <div class="file-preview-icon">🎵</div>
-                    <div class="file-preview-info">
-                        <div class="file-preview-name">@selectedFileName</div>
-                        <div class="file-preview-size">@FormatFileSize(selectedFileSize)</div>
-                    </div>
-                    <button class="btn-clear-file" @onclick="ClearFile" title="Remove file">✕</button>
-                </div>
-                
-                <div class="action-buttons">
-                    <button class="btn btn-secondary btn-change" @onclick="ChangeFile" disabled="@isProcessing">
-                        📂 Change File
-                    </button>
-                    <button class="btn btn-primary btn-start" @onclick="TranscribeAudio" disabled="@isProcessing">
-                        @if (isProcessing)
-                        {
-                            <span class="spinner"></span>
-                            <span>Processing...</span>
-                        }
-                        else
-                        {
-                            <span>▶️ Start Transcription</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        }
-    </div>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger">
-            ⚠️ @errorMessage
-        </div>
-    }
-
-    @if (isProcessing)
-    {
-        <div class="processing-indicator">
-            <div class="spinner-large"></div>
-            <p>⏳ Transcribing audio... This may take a moment.</p>
-            <p class="processing-note">Processing time depends on file length.</p>
-        </div>
-    }
-
-    @if (transcriptionResult != null)
-    {
-        <div class="result-section">
-            <h2>✅ Transcription Complete</h2>
             
-            <div class="result-meta">
-                <div class="meta-item">
-                    <strong>File:</strong> @transcriptionResult.Filename
-                </div>
-                <div class="meta-item">
-                    <strong>Timestamp:</strong> @transcriptionResult.Timestamp
-                </div>
-            </div>
-
-            <div class="result-text">
-                <h3>Full Text</h3>
-                <div class="text-content">
-                    @transcriptionResult.Text
-                </div>
-            </div>
-
-            @if (transcriptionResult.Segments != null && transcriptionResult.Segments.Length > 0)
+            @if (!string.IsNullOrEmpty(selectedFileName))
             {
-                <div class="segments-section">
-                    <h3>Segments (@transcriptionResult.Segments.Length)</h3>
-                    <div class="segments-list">
-                        @foreach (var segment in transcriptionResult.Segments.Take(10))
-                        {
-                            <div class="segment">
-                                <div class="segment-timestamp">
-                                    [@FormatTime(segment.Start) - @FormatTime(segment.End)]
-                                </div>
-                                <div class="segment-text">@segment.Text</div>
-                            </div>
-                        }
-                        @if (transcriptionResult.Segments.Length > 10)
-                        {
-                            <p class="more-segments">... and @(transcriptionResult.Segments.Length - 10) more segments</p>
-                        }
+                <div class="selected-file-info">
+                    <div class="file-icon">🎵</div>
+                    <div class="file-details">
+                        <div class="file-name">@selectedFileName</div>
+                        <div class="file-size">@FormatFileSize(selectedFileSize)</div>
                     </div>
+                    <button class="btn-clear" @onclick="ClearFile" title="Clear file">✕</button>
                 </div>
             }
         </div>
-    }
+    </div>
+
+    <!-- Section 2: Start Transcribing (Always Visible, Always Enabled) -->
+    <div class="section section-action">
+        <button class="btn-transcribe" @onclick="TranscribeAudio">
+            @if (isProcessing)
+            {
+                <span class="spinner-small"></span>
+                <span>Processing...</span>
+            }
+            else
+            {
+                <span>▶️ Start Transcription</span>
+            }
+        </button>
+    </div>
+
+    <!-- Section 3: Transcription Result (Multiline Textbox) -->
+    <div class="section section-result">
+        <h2>📄 Transcription Result</h2>
+        <textarea class="result-textarea" 
+                  readonly 
+                  placeholder="Transcription will appear here..."
+                  value="@transcriptionText"></textarea>
+    </div>
+
+    <!-- Section 4: Progress Log (Console Style) -->
+    <div class="section section-log">
+        <h2>📋 Progress Log</h2>
+        <div class="console-log" @ref="logElement">
+            @foreach (var log in progressLogs)
+            {
+                <div class="log-entry @log.Level">
+                    <span class="log-timestamp">[@log.Timestamp.ToString("HH:mm:ss")]</span>
+                    <span class="log-message">@log.Message</span>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
@@ -126,82 +86,93 @@
     private long selectedFileSize = 0;
     private bool isProcessing = false;
     private bool isDragOver = false;
-    private string errorMessage = string.Empty;
-    private TranscriptionResponse? transcriptionResult;
+    private string transcriptionText = string.Empty;
+    private List<LogEntry> progressLogs = new();
+    private ElementReference logElement;
+
+    protected override void OnInitialized()
+    {
+        AddLog("System ready. Select an audio file to begin.", "info");
+    }
 
     private void HandleDragEnter()
     {
         isDragOver = true;
-        Logger.LogDebug("Drag enter");
     }
 
     private void HandleDragLeave()
     {
         isDragOver = false;
-        Logger.LogDebug("Drag leave");
     }
 
     private async Task HandleDrop(DragEventArgs e)
     {
         isDragOver = false;
-        Logger.LogDebug("Drop event triggered, file count: {Count}", e.DataTransfer.Files.Count());
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        Logger.LogInformation("File selected: {FileName}, Size: {Size}", e.File.Name, e.File.Size);
-        
         selectedFile = e.File;
         selectedFileName = e.File.Name;
         selectedFileSize = e.File.Size;
-        errorMessage = string.Empty;
-        transcriptionResult = null;
         isDragOver = false;
         
+        AddLog($"File selected: {e.File.Name} ({FormatFileSize(e.File.Size)})", "success");
         StateHasChanged();
     }
 
     private void ClearFile()
     {
-        Logger.LogDebug("Clear file");
         selectedFile = null;
         selectedFileName = string.Empty;
         selectedFileSize = 0;
-        errorMessage = string.Empty;
-        transcriptionResult = null;
+        transcriptionText = string.Empty;
+        AddLog("File cleared", "info");
         StateHasChanged();
-    }
-
-    private async Task ChangeFile()
-    {
-        Logger.LogDebug("Change file");
-        ClearFile();
-        // The input will be re-rendered and ready for next selection
     }
 
     private async Task TranscribeAudio()
     {
         if (selectedFile == null)
         {
-            errorMessage = "No file selected";
+            AddLog("⚠️ Error: No file selected. Please select a file first.", "error");
+            return;
+        }
+
+        if (isProcessing)
+        {
+            AddLog("⚠️ Warning: Transcription already in progress.", "warning");
             return;
         }
 
         isProcessing = true;
-        errorMessage = string.Empty;
-        transcriptionResult = null;
+        transcriptionText = string.Empty;
         StateHasChanged();
 
         try
         {
-            Logger.LogInformation("Starting transcription for file: {FileName}", selectedFile.Name);
-            transcriptionResult = await ApiService.TranscribeAsync(selectedFile);
-            Logger.LogInformation("Transcription completed successfully");
+            AddLog($"Starting transcription for: {selectedFile.Name}", "info");
+            AddLog("Uploading file to server...", "info");
+            
+            var result = await ApiService.TranscribeAsync(selectedFile);
+            
+            AddLog("✓ Upload complete", "success");
+            AddLog("Processing audio with NVIDIA ASR...", "info");
+            AddLog($"✓ Transcription complete! ({result.Segments?.Length ?? 0} segments)", "success");
+            
+            transcriptionText = result.Text;
+            
+            if (!string.IsNullOrEmpty(result.Text))
+            {
+                AddLog($"Total text length: {result.Text.Length} characters", "info");
+            }
+            
+            AddLog("Ready for next transcription", "success");
         }
         catch (Exception ex)
         {
+            AddLog($"✗ Error: {ex.Message}", "error");
             Logger.LogError(ex, "Transcription failed");
-            errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
@@ -210,10 +181,22 @@
         }
     }
 
-    private string FormatTime(double seconds)
+    private void AddLog(string message, string level = "info")
     {
-        var ts = TimeSpan.FromSeconds(seconds);
-        return ts.ToString(@"hh\:mm\:ss\.fff");
+        progressLogs.Add(new LogEntry
+        {
+            Timestamp = DateTime.Now,
+            Message = message,
+            Level = level
+        });
+        
+        // Keep only last 100 entries
+        if (progressLogs.Count > 100)
+        {
+            progressLogs.RemoveAt(0);
+        }
+        
+        StateHasChanged();
     }
 
     private string FormatFileSize(long bytes)
@@ -222,11 +205,18 @@
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
+
+    private class LogEntry
+    {
+        public DateTime Timestamp { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string Level { get; set; } = "info";
+    }
 }
 
 <style>
     .transcribe-container {
-        max-width: 900px;
+        max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
     }
@@ -236,28 +226,39 @@
         border-bottom: 3px solid #76b900;
         padding-bottom: 10px;
         margin-bottom: 30px;
+        font-size: 2rem;
     }
 
-    .upload-section {
+    /* Section Styling */
+    .section {
         background: white;
-        padding: 30px;
+        padding: 25px;
         border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
     }
 
-    .supported-formats {
-        color: #666;
-        margin-bottom: 20px;
+    .section h2 {
+        color: #333;
+        font-size: 1.3rem;
+        margin: 0 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+
+    /* Section 1: File Selection */
+    .section-file {
+        border-left: 4px solid #76b900;
     }
 
     .file-drop-zone {
         border: 2px dashed #ccc;
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 40px;
-        position: relative;
-        transition: all 0.3s;
+        text-align: center;
+        transition: all 0.3s ease;
         cursor: pointer;
+        background: #fafafa;
     }
 
     .file-drop-zone:hover,
@@ -266,124 +267,100 @@
         background: rgba(118, 185, 0, 0.05);
     }
 
-    .file-drop-zone #file-input {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
+    .file-select-label {
         cursor: pointer;
-    }
-
-    .file-drop-zone #file-input.hidden-input {
-        display: none;
-    }
-
-    .drop-zone-content {
-        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
     }
 
     .upload-icon {
         font-size: 3rem;
-        display: block;
-        margin-bottom: 10px;
     }
 
-    /* File Selected Container */
-    .file-selected-container {
-        margin-top: 20px;
+    .upload-text {
+        font-size: 1.1rem;
+        color: #333;
+        font-weight: 500;
     }
 
-    .file-preview {
+    .supported-formats {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .selected-file-info {
+        margin-top: 15px;
+        padding: 15px;
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        border: 2px solid #76b900;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         gap: 15px;
-        padding: 20px;
-        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-        border: 2px solid #76b900;
-        border-radius: 12px;
         position: relative;
     }
 
-    .file-preview-icon {
-        font-size: 3rem;
+    .file-icon {
+        font-size: 2.5rem;
         background: white;
-        width: 70px;
-        height: 70px;
-        border-radius: 12px;
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    .file-preview-info {
+    .file-details {
         flex: 1;
-        text-align: left;
     }
 
-    .file-preview-name {
-        font-size: 1.2rem;
+    .file-name {
+        font-size: 1.1rem;
         font-weight: 600;
         color: #333;
         word-break: break-all;
     }
 
-    .file-preview-size {
+    .file-size {
+        font-size: 0.9rem;
         color: #666;
         margin-top: 4px;
     }
 
-    .btn-clear-file {
+    .btn-clear {
         position: absolute;
         top: 10px;
         right: 10px;
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
         border: none;
         background: rgba(0,0,0,0.1);
         border-radius: 50%;
         cursor: pointer;
         font-size: 14px;
         color: #666;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         transition: all 0.2s;
     }
 
-    .btn-clear-file:hover {
+    .btn-clear:hover {
         background: #ff5252;
         color: white;
     }
 
-    .action-buttons {
-        display: flex;
-        gap: 15px;
-        margin-top: 20px;
-        justify-content: center;
+    /* Section 2: Action Button */
+    .section-action {
+        border-left: 4px solid #2196f3;
+        text-align: center;
     }
 
-    .btn-change {
-        padding: 12px 24px;
-        font-size: 1rem;
-        background: #f5f5f5;
-        border: 2px solid #ddd;
-        border-radius: 50px;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-change:hover:not(:disabled) {
-        background: #e0e0e0;
-        border-color: #bbb;
-    }
-
-    .btn-start {
-        padding: 14px 36px;
-        font-size: 1.2rem;
+    .btn-transcribe {
+        padding: 18px 50px;
+        font-size: 1.3rem;
+        font-weight: 600;
         background: linear-gradient(135deg, #76b900 0%, #5a8a00 100%);
         border: none;
         border-radius: 50px;
@@ -391,25 +368,21 @@
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        font-weight: 600;
+        gap: 12px;
         box-shadow: 0 4px 15px rgba(118, 185, 0, 0.4);
-        transition: all 0.2s;
+        transition: all 0.3s ease;
     }
 
-    .btn-start:hover:not(:disabled) {
+    .btn-transcribe:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(118, 185, 0, 0.5);
     }
 
-    .btn-start:disabled {
-        background: #ccc;
-        box-shadow: none;
-        cursor: not-allowed;
-        transform: none;
+    .btn-transcribe:active {
+        transform: translateY(0);
     }
 
-    .spinner {
+    .spinner-small {
         width: 20px;
         height: 20px;
         border: 2px solid rgba(255, 255, 255, 0.3);
@@ -418,116 +391,126 @@
         animation: spin 0.8s linear infinite;
     }
 
-    .processing-indicator {
-        text-align: center;
-        padding: 40px;
-        margin-top: 20px;
+    /* Section 3: Result Textbox */
+    .section-result {
+        border-left: 4px solid #ff9800;
     }
 
-    .spinner-large {
-        width: 50px;
-        height: 50px;
-        border: 4px solid rgba(118, 185, 0, 0.3);
-        border-top-color: #76b900;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
+    .result-textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        resize: vertical;
+        background: #fafafa;
+        color: #333;
     }
 
-    .processing-note {
-        color: #888;
+    .result-textarea:focus {
+        outline: none;
+        border-color: #ff9800;
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+    }
+
+    .result-textarea::placeholder {
+        color: #999;
+        font-style: italic;
+    }
+
+    /* Section 4: Console Log */
+    .section-log {
+        border-left: 4px solid #9c27b0;
+    }
+
+    .console-log {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 0.9rem;
+        line-height: 1.5;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
     }
 
+    .log-entry {
+        padding: 4px 0;
+        display: flex;
+        gap: 10px;
+    }
+
+    .log-timestamp {
+        color: #858585;
+        font-weight: 600;
+    }
+
+    .log-message {
+        flex: 1;
+    }
+
+    .log-entry.info .log-message {
+        color: #4fc3f7;
+    }
+
+    .log-entry.success .log-message {
+        color: #81c784;
+    }
+
+    .log-entry.warning .log-message {
+        color: #ffb74d;
+    }
+
+    .log-entry.error .log-message {
+        color: #e57373;
+    }
+
+    /* Scrollbar for console */
+    .console-log::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .console-log::-webkit-scrollbar-track {
+        background: #2d2d2d;
+        border-radius: 4px;
+    }
+
+    .console-log::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 4px;
+    }
+
+    .console-log::-webkit-scrollbar-thumb:hover {
+        background: #777;
+    }
+
+    /* Animations */
     @@keyframes spin {
         to { transform: rotate(360deg); }
     }
 
-    .alert {
-        margin-top: 20px;
-        padding: 15px 20px;
-        border-radius: 8px;
-    }
+    /* Responsive Design */
+    @@media (max-width: 768px) {
+        .transcribe-container {
+            padding: 10px;
+        }
 
-    .alert-danger {
-        background: #ffebee;
-        color: #c62828;
-        border: 1px solid #ffcdd2;
-    }
+        .section {
+            padding: 15px;
+        }
 
-    .result-section {
-        margin-top: 30px;
-        background: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
+        .btn-transcribe {
+            padding: 14px 30px;
+            font-size: 1.1rem;
+        }
 
-    .result-section h2 {
-        color: #388e3c;
-        margin-bottom: 20px;
-    }
-
-    .result-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-bottom: 20px;
-        padding: 15px;
-        background: #f5f5f5;
-        border-radius: 8px;
-    }
-
-    .meta-item {
-        color: #666;
-    }
-
-    .result-text h3,
-    .segments-section h3 {
-        color: #333;
-        margin-bottom: 15px;
-    }
-
-    .text-content {
-        padding: 20px;
-        background: #fafafa;
-        border-radius: 8px;
-        white-space: pre-wrap;
-        line-height: 1.6;
-        border-left: 4px solid #76b900;
-    }
-
-    .segments-section {
-        margin-top: 30px;
-    }
-
-    .segments-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .segment {
-        padding: 15px;
-        background: #fafafa;
-        border-radius: 8px;
-        border-left: 4px solid #76b900;
-    }
-
-    .segment-timestamp {
-        color: #666;
-        font-size: 0.9rem;
-        font-family: monospace;
-        margin-bottom: 5px;
-    }
-
-    .segment-text {
-        color: #333;
-    }
-
-    .more-segments {
-        text-align: center;
-        color: #666;
-        margin-top: 10px;
+        .file-drop-zone {
+            padding: 25px;
+        }
     }
 </style>
