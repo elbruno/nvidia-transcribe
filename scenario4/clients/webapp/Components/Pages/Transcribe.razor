@@ -10,36 +10,52 @@
         <h3>Upload Audio File</h3>
         <p class="supported-formats">Supported formats: WAV, MP3, FLAC (max 50MB)</p>
         
-        <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
-             @ondragenter="HandleDragEnter"
-             @ondragleave="HandleDragLeave"
-             @ondragover:preventDefault>
-            <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" />
-            <div class="drop-zone-content">
-                <span class="upload-icon">📁</span>
-                <p>Drag and drop your audio file here or click to browse</p>
-            </div>
-        </div>
-        
-        @if (!string.IsNullOrEmpty(selectedFileName))
+        @if (string.IsNullOrEmpty(selectedFileName))
         {
-            <div class="selected-file">
-                <span class="file-icon">🎵</span>
-                <span class="file-name">@selectedFileName</span>
-                <span class="file-size">(@FormatFileSize(selectedFileSize))</span>
+            <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
+                 @ondragenter="HandleDragEnter"
+                 @ondragleave="HandleDragLeave"
+                 @ondragover:preventDefault>
+                <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" />
+                <div class="drop-zone-content">
+                    <span class="upload-icon">📁</span>
+                    <p>Drag and drop your audio file here or click to browse</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="file-selected-container">
+                <div class="file-preview">
+                    <div class="file-preview-icon">🎵</div>
+                    <div class="file-preview-info">
+                        <div class="file-preview-name">@selectedFileName</div>
+                        <div class="file-preview-size">@FormatFileSize(selectedFileSize)</div>
+                    </div>
+                    <button class="btn-clear-file" @onclick="ClearFile" title="Remove file">✕</button>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-secondary btn-change" @onclick="TriggerFileSelect" disabled="@isProcessing">
+                        📂 Change File
+                    </button>
+                    <button class="btn btn-primary btn-start" @onclick="TranscribeAudio" disabled="@isProcessing">
+                        @if (isProcessing)
+                        {
+                            <span class="spinner"></span>
+                            <span>Processing...</span>
+                        }
+                        else
+                        {
+                            <span>▶️ Start Transcription</span>
+                        }
+                    </button>
+                </div>
             </div>
             
-            <button class="btn btn-primary btn-transcribe" @onclick="TranscribeAudio" disabled="@isProcessing">
-                @if (isProcessing)
-                {
-                    <span class="spinner"></span>
-                    <span>Processing...</span>
-                }
-                else
-                {
-                    <span>🚀 Transcribe</span>
-                }
-            </button>
+            <div class="hidden-file-input">
+                <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" @ref="fileInputRef" />
+            </div>
         }
     </div>
 
@@ -113,6 +129,7 @@
     private bool isDragOver = false;
     private string errorMessage = string.Empty;
     private TranscriptionResponse? transcriptionResult;
+    private InputFile? fileInputRef;
 
     private void HandleDragEnter()
     {
@@ -132,6 +149,21 @@
         errorMessage = string.Empty;
         transcriptionResult = null;
         isDragOver = false;
+    }
+
+    private void ClearFile()
+    {
+        selectedFile = null;
+        selectedFileName = string.Empty;
+        selectedFileSize = 0;
+        errorMessage = string.Empty;
+        transcriptionResult = null;
+    }
+
+    private void TriggerFileSelect()
+    {
+        // The hidden InputFile will handle this via its own click
+        ClearFile();
     }
 
     private async Task TranscribeAudio()
@@ -233,49 +265,127 @@
         margin-bottom: 10px;
     }
 
-    .selected-file {
-        margin-top: 20px;
-        padding: 15px;
-        background: #f5f5f5;
-        border-radius: 8px;
+    /* File Selected Container */
+    .file-selected-container {
+        margin-top: 10px;
+    }
+
+    .file-preview {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px;
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        border: 2px solid #76b900;
+        border-radius: 12px;
+        position: relative;
+    }
+
+    .file-preview-icon {
+        font-size: 3rem;
+        background: white;
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .file-icon {
-        font-size: 1.5rem;
+    .file-preview-info {
+        flex: 1;
+        text-align: left;
     }
 
-    .file-name {
+    .file-preview-name {
+        font-size: 1.2rem;
         font-weight: 600;
         color: #333;
+        word-break: break-all;
     }
 
-    .file-size {
+    .file-preview-size {
         color: #666;
+        margin-top: 4px;
     }
 
-    .btn-transcribe {
+    .btn-clear-file {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: rgba(0,0,0,0.1);
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-clear-file:hover {
+        background: #ff5252;
+        color: white;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 15px;
         margin-top: 20px;
-        padding: 12px 30px;
-        font-size: 1.1rem;
-        background: #76b900;
+        justify-content: center;
+    }
+
+    .btn-change {
+        padding: 12px 24px;
+        font-size: 1rem;
+        background: #f5f5f5;
+        border: 2px solid #ddd;
+        border-radius: 50px;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-change:hover:not(:disabled) {
+        background: #e0e0e0;
+        border-color: #bbb;
+    }
+
+    .btn-start {
+        padding: 14px 36px;
+        font-size: 1.2rem;
+        background: linear-gradient(135deg, #76b900 0%, #5a8a00 100%);
         border: none;
         border-radius: 50px;
+        color: white;
+        cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 10px;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(118, 185, 0, 0.4);
+        transition: all 0.2s;
     }
 
-    .btn-transcribe:hover:not(:disabled) {
-        background: #5a8a00;
+    .btn-start:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(118, 185, 0, 0.5);
     }
 
-    .btn-transcribe:disabled {
+    .btn-start:disabled {
         background: #ccc;
+        box-shadow: none;
         cursor: not-allowed;
+        transform: none;
+    }
+
+    .hidden-file-input {
+        display: none;
     }
 
     .spinner {
