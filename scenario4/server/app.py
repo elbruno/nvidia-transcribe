@@ -3,6 +3,7 @@ FastAPI server for NVIDIA ASR transcription service.
 Provides REST API endpoints for audio transcription using the Parakeet model.
 """
 
+import gc
 import os
 import shutil
 import tempfile
@@ -182,6 +183,38 @@ def cleanup_file(file_path: Path):
         print(f"Error cleaning up file {file_path}: {e}")
 
 
+def cleanup_gpu_memory():
+    """
+    Free GPU memory after each transcription job.
+    
+    Clears PyTorch's CUDA memory cache and runs Python garbage collection
+    to release intermediate tensors and activations that are no longer needed.
+    Models remain loaded in GPU memory for reuse.
+    """
+    if not torch.cuda.is_available():
+        return
+    
+    try:
+        before_mb = torch.cuda.memory_allocated() / (1024 * 1024)
+        
+        # Force Python garbage collection to release dangling tensor references
+        gc.collect()
+        
+        # Release cached memory back to the CUDA allocator
+        torch.cuda.empty_cache()
+        
+        # Clean up any inter-process shared memory
+        if hasattr(torch.cuda, 'ipc_collect'):
+            torch.cuda.ipc_collect()
+        
+        after_mb = torch.cuda.memory_allocated() / (1024 * 1024)
+        freed_mb = before_mb - after_mb
+        
+        print(f"GPU memory cleanup: {before_mb:.1f}MB -> {after_mb:.1f}MB (freed {freed_mb:.1f}MB)")
+    except Exception as e:
+        print(f"Warning: GPU memory cleanup failed: {e}")
+
+
 async def get_or_load_model(model_key: str):
     """
     Get or load the specified model.
@@ -205,12 +238,12 @@ async def get_or_load_model(model_key: str):
         
         # PyTorch 2.6+ defaults weights_only=True in torch.load, which is
         # incompatible with certain NeMo checkpoints (e.g. Canary-1B).
-        # Temporarily patch torch.load to use weights_only=False for those models.
+        # NeMo's save_restore_connector explicitly passes weights_only=True,
+        # so we must override it unconditionally for affected models.
         _original_torch_load = torch.load
         @functools.wraps(torch.load)
         def _patched_torch_load(*args, **kwargs):
-            if 'weights_only' not in kwargs:
-                kwargs['weights_only'] = False
+            kwargs['weights_only'] = False
             return _original_torch_load(*args, **kwargs)
         
         torch.load = _patched_torch_load
@@ -224,6 +257,13 @@ async def get_or_load_model(model_key: str):
         # Check device
         device = next(asr_models[model_key].parameters()).device
         gpu_available = torch.cuda.is_available()
+        
+        # Set model to eval mode (disables dropout, gradient tracking, etc.)
+        asr_models[model_key].eval()
+        
+        # Clear any transient GPU allocations from model initialization
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         print(f"Model {model_key} loaded on device: {device} ({model_load_duration:.2f}s)")
         
@@ -423,6 +463,9 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         cleanup_file(audio_path)
         if temp_wav:
             cleanup_file(temp_wav)
+        
+        # Free GPU memory (intermediate tensors, caches) after each job
+        cleanup_gpu_memory()
 
 
 @app.on_event("startup")
@@ -769,6 +812,9 @@ async def transcribe_audio(
                             'text': seg[2] if len(seg) > 2 else ''
                         })
         
+        # Free GPU memory after transcription
+        cleanup_gpu_memory()
+        
         # Schedule cleanup
         background_tasks.add_task(cleanup_file, temp_upload_path)
         if temp_wav:
@@ -787,6 +833,7 @@ async def transcribe_audio(
         raise
     except Exception as e:
         # Cleanup on error
+        cleanup_gpu_memory()
         if temp_upload:
             cleanup_file(Path(temp_upload.name))
         if temp_wav:

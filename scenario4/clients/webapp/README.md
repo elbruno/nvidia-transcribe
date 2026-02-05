@@ -4,10 +4,15 @@ A server-side Blazor web application for NVIDIA ASR audio transcription, built w
 
 ## Features
 
-- **Audio File Upload**: Upload WAV, MP3, or FLAC files (up to 50MB)
-- **Real-time Transcription**: Get transcription results with timestamps
+- **Audio File Upload**: Upload WAV, MP3, or FLAC files (up to 50MB) via drag-and-drop or file picker
+- **Dual Model Support**: Choose between Parakeet (English) and Canary-1B (multilingual) models
+- **Side-by-Side Layout**: File selection and configuration panels in collapsible columns
+- **Fixed Progress Log**: Bottom-pinned log panel with expand/collapse and entry count badge
+- **Tabbed Results**: Text, SRT, and TXT output tabs with copy-to-clipboard and download buttons
+- **Client-Side SRT Generation**: Generates SRT subtitle content from transcript segments
+- **Async Job Management**: Background transcription with real-time status polling and cancellation
 - **Aspire Integration**: Full integration with .NET Aspire service discovery and health checks
-- **Modern UI**: Responsive design with Bootstrap styling
+- **Modern UI**: Responsive design with collapsible sections and JS interop for copy/download
 
 ## Architecture
 
@@ -33,7 +38,8 @@ webapp/
 ├── Services/
 │   └── TranscriptionApiService.cs  # API client service
 ├── wwwroot/
-│   └── app.css                # Application styles
+│   ├── app.css                # Application styles
+│   └── app.js                 # JS interop (copy, download, scroll)
 ├── Program.cs                 # Application entry point
 └── TranscriptionWebApp2.csproj
 ```

@@ -36,11 +36,13 @@ The Blazor web app includes a complete file upload interface with model/language
 6. Supported formats: WAV, MP3, FLAC (up to 50MB)
 
 The transcription interface provides:
+- **Side-by-side layout**: File selection and configuration panels in collapsible columns
 - Model and language selection dropdowns
 - Timestamp generation toggle (Parakeet only)
-- Real-time processing feedback
-- Full transcription text
+- **Fixed bottom progress log**: Real-time log with expand/collapse and entry count badge
+- **Tabbed results**: Text, SRT, and TXT tabs with copy-to-clipboard and download buttons
 - Timestamp segments (when available)
+- Client-side SRT subtitle generation from transcript segments
 - Metadata (filename, model used, processing time)
 
 **Note**: The webapp now uses **async job mode** with status polling for better handling of long-running transcriptions. You can also cancel jobs in progress.
@@ -368,8 +370,9 @@ Then navigate to the Aspire dashboard to access the web client.
 ## Limitations
 
 - Maximum audio file length: 24 minutes (model limitation)
-- English language only (Parakeet model)
-- Requires significant memory for model loading (~2GB)
+- Parakeet: English only; Canary-1B: en, es, de, fr (non-commercial license)
+- Requires significant memory for model loading (~2-4GB depending on models loaded)
+- GPU memory is automatically cleaned up after each transcription job
 - First startup is slow (~5-10 min) due to model download; subsequent runs use cached model
 
 ## Troubleshooting
@@ -408,6 +411,17 @@ Then navigate to the Aspire dashboard to access the web client.
 - Subsequent runs will be much faster due to model caching
 - If using Aspire, model is cached in `hf-model-cache` Docker volume
 
+## GPU Memory Management
+
+The server automatically manages GPU memory to prevent leaks across multiple transcription requests:
+- GPU VRAM is cleaned up after each transcription job (`gc.collect()`, `torch.cuda.empty_cache()`, `torch.cuda.ipc_collect()`)
+- Models are set to evaluation mode (`model.eval()`) to reduce memory overhead
+- Memory usage is logged before and after cleanup for monitoring
+
+## PyTorch Compatibility
+
+The server includes a compatibility patch for PyTorch 2.9+ where `torch.load` defaults to `weights_only=True`. This is incompatible with NeMo model checkpoints, so the server unconditionally overrides this setting when loading models.
+
 ## License
 
-This scenario uses the Parakeet model (CC-BY-4.0), which allows commercial use.
+This scenario uses the Parakeet model (CC-BY-4.0), which allows commercial use. The Canary-1B model uses CC-BY-NC-4.0 (non-commercial use only).

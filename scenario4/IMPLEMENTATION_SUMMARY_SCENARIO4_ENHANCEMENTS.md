@@ -204,14 +204,22 @@ Same parameters as synchronous mode. Returns job ID for status polling.
    - Parakeet: ~1.2GB, loads at startup
    - Canary: ~2GB+, loads on first request
    - First Canary request will have ~30-60s delay
+   - Models set to eval mode after loading to reduce memory
 
 2. **Memory Usage**:
    - Only one model loaded at a time in typical usage
    - Both models can be resident if both are used
+   - GPU memory automatically cleaned after each transcription
 
 3. **Transcription Speed**:
    - Parakeet: Faster, optimized for English
    - Canary: Slightly slower, multilingual processing
+
+4. **GPU Memory Management**:
+   - `cleanup_gpu_memory()` runs after every transcription job
+   - Uses `gc.collect()`, `torch.cuda.empty_cache()`, `torch.cuda.ipc_collect()`
+   - Memory usage logged before and after cleanup
+   - Models remain loaded; only intermediate tensors are freed
 
 ## Security Notes
 
@@ -241,6 +249,32 @@ Potential areas for future development:
 4. Add model and language selection to console client
 5. Update documentation with new features
 6. Address code review feedback
+7. Blazor UI redesign: side-by-side columns, collapsible panels, fixed log, SRT/TXT tabs
+8. PyTorch 2.9+ compatibility fix (torch.load weights_only patch)
+9. GPU memory cleanup after each transcription job
+
+## Additional Enhancements (Post-Initial Implementation)
+
+### Blazor UI Redesign
+- **Side-by-side layout**: File selection and configuration in collapsible columns
+- **Collapsible sections**: File panel expanded by default, config collapsed
+- **Fixed progress log**: Bottom-pinned panel with expand/collapse toggle and entry count badge
+- **Tabbed results**: Text/SRT/TXT tabs with copy-to-clipboard and download buttons
+- **Client-side SRT generation**: `GenerateSrtContent()` and `SecondsToSrtTime()` helpers
+- **JS interop**: `copyToClipboard()`, `downloadTextFile()`, `scrollToBottom()` in app.js
+
+### PyTorch 2.9+ Compatibility Fix
+- PyTorch 2.9 changed `torch.load` to default `weights_only=True`
+- NeMo explicitly passes `weights_only=True` in `save_restore_connector.py`
+- Server applies unconditional monkey-patch: `kwargs['weights_only'] = False`
+- Ensures both Parakeet and Canary models load correctly in the NeMo container
+
+### GPU Memory Management
+- `cleanup_gpu_memory()` function added to `app.py`
+- Runs `gc.collect()`, `torch.cuda.empty_cache()`, `torch.cuda.ipc_collect()`
+- Called in the `finally` block of `process_transcription_job()` and sync `/transcribe`
+- Models set to `model.eval()` after loading to disable gradient tracking
+- Memory usage logged before/after cleanup for monitoring
 
 ## References
 
