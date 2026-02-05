@@ -8,8 +8,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 // IMPORTANT: Requires Python 3.12 virtual environment setup BEFORE running
 // Run: ..\server\setup-venv.ps1 (Windows) or ../server/setup-venv.sh (Linux)
 var apiServer = builder.AddUvicornApp("apiserver", "../server", "app:app")
-    .WithHttpEndpoint(port: 8000, name: "http", env: "PORT")
-    .WithExternalHttpEndpoints()
+    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "apiendpoint", env: "PORT", isProxied: false)
     .WithHttpHealthCheck("/health")
     .WithVirtualEnvironment(".venv")
     .WithEnvironment("PYTHONUNBUFFERED", "1");  // For real-time logging
