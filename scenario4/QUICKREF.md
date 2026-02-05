@@ -53,11 +53,17 @@ az containerapp create \
 ```bash
 cd scenario4/clients/console
 
-# Run with local server
+# Run with local server (synchronous mode)
 dotnet run audio.mp3
+
+# Run with async job mode
+dotnet run audio.mp3 --async
 
 # Run with remote server
 dotnet run audio.mp3 http://server:8000
+
+# Run with remote server and async mode
+dotnet run audio.mp3 http://server:8000 --async
 
 # Build
 dotnet build
@@ -88,17 +94,55 @@ dotnet publish -c Release -r win-x64 --self-contained
 
 ## API Endpoints
 
-### Test Server
+### Health & Info
 ```bash
 # Root
 curl http://localhost:8000/
 
 # Health check
 curl http://localhost:8000/health
+```
 
-# Transcribe (with curl)
+### Synchronous Transcription
+```bash
+# Transcribe (synchronous - waits for completion)
 curl -X POST http://localhost:8000/transcribe \
   -F "file=@audio.mp3"
+```
+
+### Async Job Management
+```bash
+# Start async job
+curl -X POST http://localhost:8000/transcribe/async \
+  -F "file=@audio.mp3"
+# Returns: {"job_id": "...", "status": "pending", "message": "..."}
+
+# Check job status
+curl http://localhost:8000/jobs/{job_id}/status
+
+# Get job result (when completed)
+curl http://localhost:8000/jobs/{job_id}/result
+
+# Cancel job
+curl -X POST http://localhost:8000/jobs/{job_id}/cancel
+```
+
+### Example Workflow
+```bash
+# 1. Start job
+JOB_ID=$(curl -X POST http://localhost:8000/transcribe/async \
+  -F "file=@audio.mp3" | jq -r '.job_id')
+
+# 2. Poll status
+while true; do
+  STATUS=$(curl http://localhost:8000/jobs/$JOB_ID/status | jq -r '.status')
+  echo "Status: $STATUS"
+  if [ "$STATUS" = "completed" ]; then break; fi
+  sleep 5
+done
+
+# 3. Get result
+curl http://localhost:8000/jobs/$JOB_ID/result
 ```
 
 ## Quick Test

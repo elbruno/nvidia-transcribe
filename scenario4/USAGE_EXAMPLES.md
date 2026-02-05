@@ -365,6 +365,121 @@ curl http://localhost:8000/health
 - Increase server resources
 - Reduce concurrent requests
 
+## Example 9: Async Job Management
+
+**Scenario**: Handling long audio files without HTTP timeouts
+
+### Using Console Client with Async Mode
+```bash
+cd scenario4/clients/console
+
+# Use --async flag for job mode
+dotnet run long_audio.mp3 --async
+```
+
+**Output:**
+```
+=== NVIDIA ASR Transcription Client ===
+
+Checking server at http://localhost:8000...
+Server is healthy ✓
+
+Starting async transcription job for: long_audio.mp3
+Uploading file...
+✓ Job started: 550e8400-e29b-41d4-a716-446655440000
+Status: pending
+
+Monitoring job progress (Ctrl+C to cancel)...
+Status: processing (elapsed: 30s)
+Status: processing (elapsed: 60s)
+
+✓ Job completed! Retrieving results...
+
+=== TRANSCRIPTION RESULT ===
+File: long_audio.mp3
+...
+```
+
+### Using Python with Async Jobs
+```python
+import requests
+import time
+
+BASE_URL = "http://localhost:8000"
+
+# Start job
+with open('long_audio.mp3', 'rb') as f:
+    response = requests.post(
+        f"{BASE_URL}/transcribe/async",
+        files={'file': f}
+    )
+    job = response.json()
+    job_id = job['job_id']
+    print(f"Job started: {job_id}")
+
+# Poll for completion
+while True:
+    response = requests.get(f"{BASE_URL}/jobs/{job_id}/status")
+    status = response.json()
+    
+    print(f"Status: {status['status']}")
+    
+    if status['status'] == 'completed':
+        # Get result
+        result = requests.get(f"{BASE_URL}/jobs/{job_id}/result")
+        print(f"Transcription: {result.json()['text']}")
+        break
+    elif status['status'] == 'failed':
+        print(f"Job failed: {status['error']}")
+        break
+    elif status['status'] == 'cancelled':
+        print("Job was cancelled")
+        break
+    
+    time.sleep(5)
+```
+
+### Cancelling a Job
+```bash
+# Start job and get job ID
+JOB_ID=$(curl -X POST http://localhost:8000/transcribe/async \
+  -F "file=@audio.mp3" | jq -r '.job_id')
+
+# Cancel it
+curl -X POST http://localhost:8000/jobs/$JOB_ID/cancel
+
+# Response:
+# {
+#   "message": "Job 550e8400-e29b-41d4-a716-446655440000 cancelled",
+#   "status": "cancelled"
+# }
+```
+
+### Web Client (Blazor) - Automatic Async Mode
+
+The Blazor web app automatically uses async job mode:
+
+1. Navigate to `/transcribe` page
+2. Upload a file (drag & drop or select)
+3. Click "Start Transcription"
+4. Watch real-time progress in the log
+5. Click "Cancel Job" if needed
+6. Result appears automatically when complete
+
+**Progress Log Example:**
+```
+[16:45:00] File selected: audio.mp3 (2.3 MB)
+[16:45:01] Starting async transcription job for: audio.mp3
+[16:45:02] ✓ Upload complete - Job ID: 550e8400...
+[16:45:02] Job status: pending
+[16:45:02] Monitoring job progress...
+[16:45:07] Job status: processing (elapsed: 5s)
+[16:45:37] ✓ Job completed! Retrieving results...
+[16:45:37] ✓ Transcription complete! (42 segments)
+[16:45:37] Total text length: 1847 characters
+[16:45:37] Ready for next transcription
+```
+
 ## Additional Resources
 
 - Main README: `../README.md`

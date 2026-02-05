@@ -72,6 +72,111 @@ public class TranscriptionApiService
         return result ?? throw new InvalidOperationException("Failed to deserialize health response");
     }
 
+    /// <summary>
+    /// Starts an asynchronous transcription job.
+    /// </summary>
+    public async Task<JobStartResponse> StartTranscriptionJobAsync(IBrowserFile file)
+    {
+        var client = _httpClientFactory.CreateClient("api");
+
+        using var content = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(maxAllowedSize: MaxFileSize);
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetContentType(file.Name));
+        content.Add(fileContent, "file", file.Name);
+
+        _logger.LogInformation("Starting async transcription job for: {FileName}", file.Name);
+
+        var response = await client.PostAsync("/transcribe/async", content);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to start job: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"Server returned {response.StatusCode}: {errorContent}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JobStartResponse>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return result ?? throw new InvalidOperationException("Failed to deserialize job start response");
+    }
+
+    /// <summary>
+    /// Gets the status of a transcription job.
+    /// </summary>
+    public async Task<JobInfo> GetJobStatusAsync(string jobId)
+    {
+        var client = _httpClientFactory.CreateClient("api");
+        var response = await client.GetAsync($"/jobs/{jobId}/status");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to get job status: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"Server returned {response.StatusCode}: {errorContent}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<JobInfo>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return result ?? throw new InvalidOperationException("Failed to deserialize job info");
+    }
+
+    /// <summary>
+    /// Gets the result of a completed transcription job.
+    /// </summary>
+    public async Task<TranscriptionResponse> GetJobResultAsync(string jobId)
+    {
+        var client = _httpClientFactory.CreateClient("api");
+        var response = await client.GetAsync($"/jobs/{jobId}/result");
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to get job result: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"Server returned {response.StatusCode}: {errorContent}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<TranscriptionResponse>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return result ?? throw new InvalidOperationException("Failed to deserialize transcription response");
+    }
+
+    /// <summary>
+    /// Cancels a transcription job.
+    /// </summary>
+    public async Task<CancelJobResponse> CancelJobAsync(string jobId)
+    {
+        var client = _httpClientFactory.CreateClient("api");
+        var response = await client.PostAsync($"/jobs/{jobId}/cancel", null);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to cancel job: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"Server returned {response.StatusCode}: {errorContent}");
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<CancelJobResponse>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return result ?? throw new InvalidOperationException("Failed to deserialize cancel response");
+    }
+
     private static string GetContentType(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
@@ -114,4 +219,37 @@ public class HealthResponse
     public string Status { get; set; } = string.Empty;
     public bool ModelLoaded { get; set; }
     public string ModelName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response model when starting a new job.
+/// </summary>
+public class JobStartResponse
+{
+    public string JobId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Information about a transcription job.
+/// </summary>
+public class JobInfo
+{
+    public string JobId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Filename { get; set; } = string.Empty;
+    public string CreatedAt { get; set; } = string.Empty;
+    public string? CompletedAt { get; set; }
+    public string? Error { get; set; }
+    public TranscriptionResponse? Result { get; set; }
+}
+
+/// <summary>
+/// Response model for job cancellation.
+/// </summary>
+public class CancelJobResponse
+{
+    public string Message { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 }

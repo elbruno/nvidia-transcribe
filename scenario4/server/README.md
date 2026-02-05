@@ -130,6 +130,62 @@ docker run -p 8000:8000 nvidia-asr-server
 
 **Note**: First run may take a while as Docker pulls the large NeMo base image (~15GB).
 
+### Docker Image Management
+
+#### Rebuilding the Docker Image
+
+When you make changes to the server code (e.g., adding new endpoints), you need to rebuild the Docker image:
+
+**Manual rebuild:**
+```bash
+# Stop and remove existing containers
+docker stop nvidia-asr-server
+docker rm nvidia-asr-server
+
+# Remove the old image
+docker rmi nvidia-asr-server
+
+# Rebuild
+docker build -t nvidia-asr-server .
+```
+
+**With .NET Aspire:**
+
+Aspire automatically rebuilds the Docker image when you run `dotnet run`, but you can force a clean rebuild:
+
+```powershell
+# Stop Aspire
+# Press Ctrl+C in the Aspire dashboard
+
+# Remove the Aspire-built image (name varies, check with docker images)
+docker images | grep apiserver
+docker rmi <image-id>
+
+# Restart Aspire
+cd scenario4\AppHost
+dotnet run
+```
+
+#### Cleaning Up Docker Resources
+
+To free up disk space:
+
+```bash
+# Remove all stopped containers
+docker container prune
+
+# Remove unused images
+docker image prune -a
+
+# Remove all unused Docker resources (containers, networks, images, volumes)
+docker system prune -a --volumes
+
+# Check current Docker disk usage
+docker system df
+```
+
+**Note:** The NeMo base image is ~15GB. If you frequently rebuild, consider keeping it and only removing your custom layers.
+
 ## API Documentation
 
 Once the server is running, visit:
@@ -154,7 +210,7 @@ Health check endpoint
 ```
 
 ### POST /transcribe
-Transcribe an audio file
+Transcribe an audio file (synchronous - waits for completion)
 
 **Request:**
 - Content-Type: `multipart/form-data`
@@ -177,7 +233,81 @@ Transcribe an audio file
 }
 ```
 
+### POST /transcribe/async
+Start an asynchronous transcription job (returns immediately with job ID)
+
+**Request:**
+- Content-Type: `multipart/form-data`
+- Field name: `file`
+- Supported formats: `.wav`, `.mp3`, `.flac`
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "message": "Transcription job started for audio.mp3"
+}
+```
+
+### GET /jobs/{job_id}/status
+Get the status of a transcription job
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "processing",  // pending, processing, completed, failed, cancelled
+  "filename": "audio.mp3",
+  "created_at": "2026-02-04T19:30:00",
+  "completed_at": null,
+  "error": null,
+  "result": null
+}
+```
+
+### GET /jobs/{job_id}/result
+Get the result of a completed transcription job
+
+**Response:**
+```json
+{
+  "text": "Full transcription text here.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.5,
+      "text": "First segment"
+    }
+  ],
+  "filename": "audio.mp3",
+  "timestamp": "2026-02-04T19:30:00"
+}
+```
+
+**Error Responses:**
+- `400`: Job not yet completed (still pending/processing)
+- `404`: Job not found
+- `500`: Job failed (includes error message)
+
+### POST /jobs/{job_id}/cancel
+Cancel a transcription job
+
+**Response:**
+```json
+{
+  "message": "Job 550e8400-e29b-41d4-a716-446655440000 cancelled",
+  "status": "cancelled"
+}
+```
+
+**Error Responses:**
+- `400`: Cannot cancel job (already completed/failed/cancelled)
+- `404`: Job not found
+
 ## Testing
+
+### Synchronous Mode (Traditional)
 
 **Using curl:**
 ```bash
@@ -196,6 +326,77 @@ with open('audio.mp3', 'rb') as f:
     response = requests.post('http://localhost:8000/transcribe', files=files)
     print(response.json())
 ```
+
+### Asynchronous Job Mode
+
+**Start a job:**
+```bash
+curl -X POST "http://localhost:8000/transcribe/async" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@audio.mp3"
+```
+
+**Check job status:**
+```bash
+curl "http://localhost:8000/jobs/{job_id}/status"
+```
+
+**Get job result (when completed):**
+```bash
+curl "http://localhost:8000/jobs/{job_id}/result"
+```
+
+**Cancel a job:**
+```bash
+curl -X POST "http://localhost:8000/jobs/{job_id}/cancel"
+```
+
+**Using Python with async jobs:**
+```python
+import requests
+import time
+
+# Start job
+with open('audio.mp3', 'rb') as f:
+    files = {'file': f}
+    response = requests.post('http://localhost:8000/transcribe/async', files=files)
+    job = response.json()
+    job_id = job['job_id']
+    print(f"Job started: {job_id}")
+
+# Poll for completion
+while True:
+    response = requests.get(f'http://localhost:8000/jobs/{job_id}/status')
+    status = response.json()
+    
+    if status['status'] == 'completed':
+        result = requests.get(f'http://localhost:8000/jobs/{job_id}/result')
+        print(result.json())
+        break
+    elif status['status'] == 'failed':
+        print(f"Job failed: {status['error']}")
+        break
+    
+    print(f"Status: {status['status']}")
+    time.sleep(5)
+```
+
+## Job Management Workflow
+
+The async job mode is ideal for:
+- Long-running transcriptions that may timeout with synchronous requests
+- Client applications that need to handle multiple concurrent jobs
+- Web applications that want to provide better user experience with progress updates
+
+**Job Lifecycle:**
+1. `pending` - Job created, waiting to start
+2. `processing` - Transcription in progress
+3. `completed` - Transcription finished successfully (result available)
+4. `failed` - Transcription failed (error details available)
+5. `cancelled` - Job was cancelled by user
+
+**Note:** Jobs are stored in-memory. Restarting the server will clear all job data.
 
 ## Configuration
 
