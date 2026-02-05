@@ -39,7 +39,46 @@
         </div>
     </div>
 
-    <!-- Section 2: Start Transcribing (Always Visible, Always Enabled) -->
+    <!-- Section 2: Transcription Configuration -->
+    <div class="section section-config">
+        <h2>⚙️ Configuration Options</h2>
+        <div class="config-grid">
+            <div class="config-option">
+                <label for="modelSelect">ASR Model:</label>
+                <select id="modelSelect" @bind="selectedModelKey" @bind:after="OnModelChanged" class="config-select">
+                    <option value="parakeet">Parakeet (English, with timestamps)</option>
+                    <option value="canary">Canary-1B (Multilingual, no timestamps)</option>
+                </select>
+            </div>
+            
+            <div class="config-option">
+                <label for="languageSelect">Language:</label>
+                <select id="languageSelect" @bind="selectedLanguageCode" class="config-select" disabled="@(!IsLanguageSelectionEnabled)">
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="de">German (de)</option>
+                    <option value="fr">French (fr)</option>
+                </select>
+                @if (!IsLanguageSelectionEnabled)
+                {
+                    <small class="config-hint">Language selection available only for Canary model</small>
+                }
+            </div>
+            
+            <div class="config-option">
+                <label for="timestampCheck">
+                    <input type="checkbox" id="timestampCheck" @bind="requestTimestamps" disabled="@(!CanGenerateTimestamps)" />
+                    Generate Timestamps
+                </label>
+                @if (!CanGenerateTimestamps)
+                {
+                    <small class="config-hint">Timestamps not supported by selected model</small>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Start Transcribing (Always Visible, Always Enabled) -->
     <div class="section section-action">
         <button class="btn-transcribe" @onclick="TranscribeAudio" disabled="@isProcessing">
             @if (isProcessing)
@@ -61,7 +100,7 @@
         }
     </div>
 
-    <!-- Section 3: Transcription Result (Multiline Textbox) -->
+    <!-- Section 4: Transcription Result (Multiline Textbox) -->
     <div class="section section-result">
         <h2>📄 Transcription Result</h2>
         <textarea class="result-textarea" 
@@ -70,7 +109,7 @@
                   value="@transcriptionText"></textarea>
     </div>
 
-    <!-- Section 4: Progress Log (Console Style) -->
+    <!-- Section 5: Progress Log (Console Style) -->
     <div class="section section-log">
         <h2>📋 Progress Log</h2>
         <div class="console-log" @ref="logElement">
@@ -94,6 +133,32 @@
     private List<LogEntry> progressLogs = new();
     private ElementReference logElement;
     private string? currentJobId;
+    
+    // Configuration fields for new features
+    private string selectedModelKey = "parakeet";
+    private string selectedLanguageCode = "en";
+    private bool requestTimestamps = true;
+    
+    // Computed properties for UI state
+    private bool IsLanguageSelectionEnabled => selectedModelKey == "canary";
+    private bool CanGenerateTimestamps => selectedModelKey == "parakeet";
+    
+    private void OnModelChanged()
+    {
+        // Reset timestamp option when switching models
+        if (selectedModelKey == "parakeet")
+        {
+            requestTimestamps = true;
+        }
+        else if (selectedModelKey == "canary")
+        {
+            requestTimestamps = false;
+        }
+        
+        AddLog($"Model changed to: {selectedModelKey}", "info");
+    }
+    
+    private void RecordLogEntry(string msg, string severity) => AddLog(msg, severity);
 
     protected override void OnInitialized()
     {
@@ -147,10 +212,15 @@
         try
         {
             AddLog($"Starting async transcription job for: {selectedFile.Name}", "info");
+            AddLog($"Configuration: Model={selectedModelKey}, Language={selectedLanguageCode}, Timestamps={requestTimestamps}", "info");
             AddLog("Uploading file to server...", "info");
             
-            // Start async job
-            var jobStart = await ApiService.StartTranscriptionJobAsync(selectedFile);
+            // Start async job with configuration parameters
+            var jobStart = await ApiService.StartTranscriptionJobAsync(
+                selectedFile, 
+                selectedModelKey, 
+                IsLanguageSelectionEnabled ? selectedLanguageCode : null,
+                requestTimestamps);
             currentJobId = jobStart.JobId;
             
             AddLog($"✓ Upload complete - Job ID: {currentJobId}", "success");
@@ -446,7 +516,73 @@
         color: white;
     }
 
-    /* Section 2: Action Button */
+    /* Section 2: Configuration Options */
+    .section-config {
+        border-left: 4px solid #ff9800;
+    }
+
+    .config-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+    }
+
+    .config-option {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .config-option label {
+        font-weight: 600;
+        color: #555;
+        font-size: 0.95rem;
+    }
+
+    .config-select {
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: border-color 0.3s;
+    }
+
+    .config-select:hover:not(:disabled) {
+        border-color: #ff9800;
+    }
+
+    .config-select:focus {
+        outline: none;
+        border-color: #ff9800;
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+    }
+
+    .config-select:disabled {
+        background: #f5f5f5;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .config-hint {
+        color: #888;
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+
+    .config-option input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+        cursor: pointer;
+    }
+
+    .config-option input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    /* Section 3: Action Button */
     .section-action {
         border-left: 4px solid #2196f3;
         text-align: center;
@@ -517,7 +653,7 @@
         animation: spin 0.8s linear infinite;
     }
 
-    /* Section 3: Result Textbox */
+    /* Section 4: Result Textbox */
     .section-result {
         border-left: 4px solid #ff9800;
     }
@@ -547,7 +683,7 @@
         font-style: italic;
     }
 
-    /* Section 4: Console Log */
+    /* Section 5: Console Log */
     .section-log {
         border-left: 4px solid #9c27b0;
     }
