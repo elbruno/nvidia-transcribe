@@ -219,6 +219,30 @@ Preview (XXX characters):
 
 ---
 
+## Audio Preparation
+
+### Trim Audio with FFmpeg
+
+Extract the first portion of an audio file (useful for testing or when files exceed the 24-minute limit):
+
+```bash
+# Get first 30 seconds (fast, no re-encoding)
+ffmpeg -i input.mp3 -t 30 -c copy output.mp3
+
+# Get first 5 minutes with re-encoding (more precise)
+ffmpeg -i input.mp3 -t 300 output.mp3
+
+# Get first 20 minutes (staying under 24-min limit)
+ffmpeg -i input.mp3 -t 1200 -c copy output.mp3
+```
+
+**Parameters:**
+- `-i input.mp3` - input file
+- `-t 30` - duration in seconds
+- `-c copy` - copy codec (faster, no quality loss)
+
+---
+
 ## Workflow Examples
 
 ### Example 1: Batch Processing with Scenario 1
