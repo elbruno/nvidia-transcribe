@@ -15,12 +15,12 @@ var apiServer = builder.AddUvicornApp("apiserver", "../server", "app:app")
     .WithEnvironment("PYTHONUNBUFFERED", "1");  // For real-time logging
 
 // Add console client project (optional - can be run separately)
-var consoleClient = builder.AddProject("console-client", "../clients/console/TranscriptionClient.csproj")
+var consoleClient = builder.AddProject<Projects.TranscriptionClient>("consoleClient")
     .WithReference(apiServer)
     .WaitFor(apiServer);
 
 // Add Blazor web client
-var blazorClient = builder.AddProject("blazor-client", "../clients/blazor/TranscriptionWebApp.csproj")
+var blazorClient = builder.AddProject<Projects.TranscriptionWebApp>("blazorClient")
     .WithReference(apiServer)
     .WaitFor(apiServer);
 

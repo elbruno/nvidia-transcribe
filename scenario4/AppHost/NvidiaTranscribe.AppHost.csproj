@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>NvidiaTranscribe.AppHost</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsAspireHost>true</IsAspireHost>
     <NoWarn>$(NoWarn);ASPIREHOSTINGPYTHON001;NETSDK1228</NoWarn>
     <EnableAspireWorkloadDeprecationWarning>false</EnableAspireWorkloadDeprecationWarning>
+	  <!-- Display name shown in Aspire dashboard (top-left) -->
+	  <AssemblyTitle>NVidia Transcriber</AssemblyTitle>
   </PropertyGroup>
 
   <ItemGroup>
