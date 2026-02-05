@@ -118,6 +118,8 @@ This launches:
 - Unified development experience
 - Automatic service discovery
 - Integrated monitoring
+
+**Optional**: Enable Azure Application Insights monitoring - see [docs/APPLICATION_INSIGHTS.md](docs/APPLICATION_INSIGHTS.md)
 - **Persistent model cache** - downloads only on first run
 
 **Note**: The console client is available as a standalone application and is not part of the Aspire orchestration.

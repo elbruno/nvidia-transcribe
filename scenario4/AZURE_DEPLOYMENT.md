@@ -1,28 +1,44 @@
 # Azure Deployment Guide for NVIDIA ASR Server
 
-This guide covers deploying the NVIDIA ASR transcription server to Azure.
+This guide covers deploying the NVIDIA ASR transcription server to Azure with optional monitoring.
 
-## Deployment Options
-
-### Option 1: Azure Container Apps (Recommended)
-
-Azure Container Apps is ideal for this workload - serverless, scalable, and supports containers.
-
-#### Prerequisites
+## Prerequisites
 - Azure CLI installed (`az`)
 - Azure subscription
 - Azure Container Registry (or Docker Hub)
 
-#### Steps
+## Deployment Steps
 
-1. **Create Resource Group:**
+### Step 1: Create Resource Group
+
 ```bash
 az group create \
   --name nvidia-asr-rg \
   --location westus2
 ```
 
-2. **Create Container Registry:**
+### Step 2: (Optional) Create Application Insights
+
+For monitoring and telemetry, create an Application Insights resource:
+
+```bash
+# Create Application Insights
+az monitor app-insights component create \
+  --app nvidia-asr-insights \
+  --location westus2 \
+  --resource-group nvidia-asr-rg
+
+# Get connection string
+INSIGHTS_CONN=$(az monitor app-insights component show \
+  --app nvidia-asr-insights \
+  --resource-group nvidia-asr-rg \
+  --query connectionString -o tsv)
+
+echo "Save this connection string: $INSIGHTS_CONN"
+```
+
+### Step 3: Create Container Registry
+
 ```bash
 az acr create \
   --resource-group nvidia-asr-rg \
@@ -30,7 +46,8 @@ az acr create \
   --sku Basic
 ```
 
-3. **Build and Push Container:**
+### Step 4: Build and Push Container
+
 ```bash
 # Login to registry
 az acr login --name nvidiaasracr
@@ -41,7 +58,8 @@ docker build -t nvidiaasracr.azurecr.io/nvidia-asr:latest .
 docker push nvidiaasracr.azurecr.io/nvidia-asr:latest
 ```
 
-4. **Create Container Apps Environment:**
+### Step 5: Create Container Apps Environment
+
 ```bash
 az containerapp env create \
   --name nvidia-asr-env \
@@ -49,7 +67,9 @@ az containerapp env create \
   --location westus2
 ```
 
-5. **Deploy Container App:**
+### Step 6: Deploy Container App
+
+**Without Application Insights:**
 ```bash
 az containerapp create \
   --name nvidia-asr-api \
@@ -60,6 +80,115 @@ az containerapp create \
   --ingress external \
   --cpu 2 \
   --memory 4Gi \
+  --min-replicas 1 \
+  --max-replicas 3
+```
+
+**With Application Insights (recommended for production):**
+```bash
+az containerapp create \
+  --name nvidia-asr-api \
+  --resource-group nvidia-asr-rg \
+  --environment nvidia-asr-env \
+  --image nvidiaasracr.azurecr.io/nvidia-asr:latest \
+  --target-port 8000 \
+  --ingress external \
+  --cpu 2 \
+  --memory 4Gi \
+  --min-replicas 1 \
+  --max-replicas 3 \
+  --secrets "insights-connection=$INSIGHTS_CONN" \
+  --env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:insights-connection"
+```
+
+### Step 7: Get the URL
+
+```bash
+az containerapp show \
+  --name nvidia-asr-api \
+  --resource-group nvidia-asr-rg \
+  --query properties.configuration.ingress.fqdn \
+  --output tsv
+```
+
+## Deploying the Blazor Webapp
+
+To deploy the Blazor webapp as well:
+
+```bash
+# Build and publish the webapp
+cd scenario4/clients/webapp
+dotnet publish -c Release -o publish
+
+# Create Dockerfile if not exists
+cat > Dockerfile << 'EOF'
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+COPY publish/ .
+ENTRYPOINT ["dotnet", "TranscriptionWebApp2.dll"]
+EOF
+
+# Build and push
+docker build -t nvidiaasracr.azurecr.io/nvidia-asr-webapp:latest .
+docker push nvidiaasracr.azurecr.io/nvidia-asr-webapp:latest
+
+# Deploy with connection to API server
+az containerapp create \
+  --name nvidia-asr-webapp \
+  --resource-group nvidia-asr-rg \
+  --environment nvidia-asr-env \
+  --image nvidiaasracr.azurecr.io/nvidia-asr-webapp:latest \
+  --target-port 8080 \
+  --ingress external \
+  --cpu 1 \
+  --memory 2Gi \
+  --secrets "insights-connection=$INSIGHTS_CONN" \
+  --env-vars "APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:insights-connection" \
+           "services__apiserver__http__0=https://$(az containerapp show --name nvidia-asr-api --resource-group nvidia-asr-rg --query properties.configuration.ingress.fqdn -o tsv)"
+```
+
+## Monitoring
+
+If you configured Application Insights:
+
+1. Navigate to Azure Portal → Application Insights → nvidia-asr-insights
+2. View "Live Metrics" for real-time monitoring
+3. Use "Logs" to query telemetry data
+4. Check "Failures" for errors
+
+Example query:
+```kusto
+traces
+| where customDimensions.ServiceName == "nvidia-asr-api"
+| order by timestamp desc
+| take 100
+```
+
+## Cost Estimation
+
+**Azure Container Apps:**
+- CPU-based pricing: ~$0.000024/vCPU-second
+- Memory-based pricing: ~$0.000002/GB-second
+- Estimated monthly cost for low traffic: $20-50
+
+**Application Insights:**
+- First 5 GB: Free
+- Additional data: ~$2.30/GB
+- Typical cost: Free tier sufficient for most deployments
+
+## Security Best Practices
+
+1. **Use Managed Identity** for ACR access instead of admin credentials
+2. **Store secrets in Azure Key Vault**, not as environment variables
+3. **Enable HTTPS only** in production
+4. **Configure CORS** appropriately for webapp
+5. **Set up Azure Front Door** or Application Gateway for advanced routing
+
+## GPU Support
+
+Azure Container Apps with GPU support is in preview. To enable:
+
+1. Create environment with GPU workload profile
   --min-replicas 1 \
   --max-replicas 3
 ```

@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict
 from enum import Enum
+import time
 
 # Enable Hugging Face download progress in logs
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"  # Use standard download with progress
@@ -23,6 +24,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 hf_logger = logging.getLogger("huggingface_hub")
 hf_logger.setLevel(logging.INFO)
+
+# Import custom NVIDIA ASR monitor
+from nvidia_asr_monitor import asr_monitor
 
 import librosa
 import nemo.collections.asr as nemo_asr
@@ -150,6 +154,11 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
     Checks for cancellation before starting transcription.
     """
     temp_wav = None
+    operation_start_time = time.time()
+    file_size_bytes = audio_path.stat().st_size if audio_path.exists() else 0
+    
+    # Record job initiation
+    asr_monitor.record_job_initiated(job_id, filename, file_size_bytes)
     
     try:
         # Check if job was cancelled before starting
@@ -183,7 +192,9 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         
         # Transcribe
         print(f"[Job {job_id}] Transcribing: {filename}")
+        transcription_start = time.time()
         output = asr_model.transcribe([str(process_path)], timestamps=True)
+        transcription_duration_ms = (time.time() - transcription_start) * 1000
         
         # Debug: Log output structure
         print(f"[Job {job_id}] Transcription output type: {type(output)}")
@@ -253,6 +264,19 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
             jobs[job_id].completed_at = datetime.now().isoformat()
             jobs[job_id].result = result
         
+        # Track successful completion metrics
+        total_duration_ms = (time.time() - operation_start_time) * 1000
+        text_length = len(text) if text else 0
+        
+        # Record successful completion with monitoring
+        asr_monitor.record_job_finished(
+            job_identifier=job_id,
+            elapsed_milliseconds=total_duration_ms,
+            input_bytes=file_size_bytes,
+            output_characters=text_length,
+            segment_count=len(segments)
+        )
+        
         print(f"[Job {job_id}] Completed successfully")
         
     except Exception as e:
@@ -260,6 +284,10 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         print(f"[Job {job_id}] Failed: {error_msg}")
         print(f"[Job {job_id}] Full traceback:")
         traceback.print_exc()
+        
+        # Record error with monitoring
+        asr_monitor.record_job_error(job_id, error_msg, e)
+        
         async with jobs_lock:
             jobs[job_id].status = JobStatus.FAILED
             jobs[job_id].completed_at = datetime.now().isoformat()
@@ -282,12 +310,17 @@ async def load_model():
         print(f"This may take several minutes on first run (~1.2GB download)", flush=True)
         print(f"=" * 60, flush=True)
         
+        model_load_start = time.time()
         # Model automatically uses GPU if available, falls back to CPU
         # PyTorch/NeMo will detect CUDA and use GPU without explicit configuration
         asr_model = nemo_asr.models.ASRModel.from_pretrained(MODEL_NAME)
+        model_load_duration = time.time() - model_load_start
         
         # Check if GPU is being used
         device = next(asr_model.parameters()).device
+        gpu_available = torch.cuda.is_available()
+        gpu_name = torch.cuda.get_device_name(0) if gpu_available else "N/A"
+        
         print(f"=" * 60, flush=True)
         print(f"Model loaded successfully on device: {device}", flush=True)
         if torch.cuda.is_available():
@@ -296,8 +329,18 @@ async def load_model():
             print("Running on CPU (GPU not available)", flush=True)
         print(f"Server is ready to accept requests!", flush=True)
         print(f"=" * 60, flush=True)
+        
+        # Record model loading event
+        asr_monitor.record_model_load(
+            model_identifier=MODEL_NAME,
+            load_seconds=model_load_duration,
+            device_name=str(device),
+            gpu_detected=gpu_available
+        )
+        
     except Exception as e:
         print(f"Error loading model: {e}", flush=True)
+        asr_monitor.record_job_error("model_loading", f"Failed to load {MODEL_NAME}", e)
         raise
 
 
@@ -537,11 +580,20 @@ async def transcribe_audio(
             timestamp_data = output[0].timestamp
             if isinstance(timestamp_data, dict) and 'segment' in timestamp_data:
                 for seg in timestamp_data['segment']:
-                    segments.append({
-                        'start': seg[0],
-                        'end': seg[1],
-                        'text': seg[2] if len(seg) > 2 else ''
-                    })
+                    # Handle both dict format {'start': ..., 'end': ..., 'text': ...}
+                    # and list/tuple format [start, end, text]
+                    if isinstance(seg, dict):
+                        segments.append({
+                            'start': seg.get('start', 0),
+                            'end': seg.get('end', 0),
+                            'text': seg.get('text', '')
+                        })
+                    else:
+                        segments.append({
+                            'start': seg[0],
+                            'end': seg[1],
+                            'text': seg[2] if len(seg) > 2 else ''
+                        })
         
         # Schedule cleanup
         background_tasks.add_task(cleanup_file, temp_upload_path)
