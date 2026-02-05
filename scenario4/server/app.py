@@ -291,7 +291,7 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         # Add language parameter for Canary model
         if model_key == 'canary' and language:
             if language not in SUPPORTED_LANGUAGES:
-                raise ValueError(f"Unsupported language: {language}. Supported: {SUPPORTED_LANGUAGES}")
+                raise ValueError(f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}")
             transcribe_kwargs['source_lang'] = language
         
         # Add timestamps if requested and supported
@@ -502,7 +502,7 @@ async def transcribe_audio_async(
         if language and language not in SUPPORTED_LANGUAGES:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported language: {language}. Supported: {list(SUPPORTED_LANGUAGES)}"
+                detail=f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}"
             )
         if not language:
             language = 'en'  # Default to English for Canary
@@ -677,7 +677,7 @@ async def transcribe_audio(
         if language and language not in SUPPORTED_LANGUAGES:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unsupported language: {language}. Supported: {list(SUPPORTED_LANGUAGES)}"
+                detail=f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}"
             )
         if not language:
             language = 'en'  # Default to English for Canary

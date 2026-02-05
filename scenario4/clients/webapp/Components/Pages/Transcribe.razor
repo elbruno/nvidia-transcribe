@@ -216,6 +216,7 @@
             AddLog("Uploading file to server...", "info");
             
             // Start async job with configuration parameters
+            // Note: Pass null for language when using Parakeet (English-only) to avoid server validation errors
             var jobStart = await ApiService.StartTranscriptionJobAsync(
                 selectedFile, 
                 selectedModelKey, 
