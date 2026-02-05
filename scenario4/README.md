@@ -8,7 +8,7 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 
 The Blazor web app includes a complete file upload interface:
 
-1. Start Aspire: `cd scenario4/AppHost && dotnet run`
+1. Start Aspire (from repository root): `cd scenario4/AppHost && dotnet run`
 2. Open the webapp from the Aspire dashboard
 3. Navigate to the **Transcribe** page (menu or button on home page)
 4. Upload audio files via:
