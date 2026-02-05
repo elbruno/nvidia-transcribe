@@ -19,8 +19,13 @@ var consoleClient = builder.AddProject<Projects.TranscriptionClient>("consoleCli
     .WithReference(apiServer)
     .WaitFor(apiServer);
 
-// Add Blazor web client
+// Add Blazor web client (WebAssembly)
 var blazorClient = builder.AddProject<Projects.TranscriptionWebApp>("blazorClient")
+    .WithReference(apiServer)
+    .WaitFor(apiServer);
+
+// Add new server-side Blazor web client with Aspire service defaults
+var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
     .WithReference(apiServer)
     .WaitFor(apiServer);
 

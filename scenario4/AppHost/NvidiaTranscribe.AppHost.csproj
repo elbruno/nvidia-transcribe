@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="../clients/console/TranscriptionClient.csproj" />
     <ProjectReference Include="../clients/blazor/TranscriptionWebApp.csproj" />
+    <ProjectReference Include="../clients/webapp/TranscriptionWebApp2.csproj" />
   </ItemGroup>
 
 </Project>
