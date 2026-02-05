@@ -76,19 +76,34 @@ export APPLICATIONINSIGHTS_CONNECTION_STRING="your-connection-string-here"
 
 ### 4. Configure via Aspire AppHost
 
-Update `scenario4/AppHost/Program.cs` to pass the connection string to both services:
+The AppHost is already configured to pass the connection string to both services. You just need to set it in your environment or configuration.
 
-```csharp
-var insightsConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
-
-var apiServer = builder.AddDockerfile("apiserver", "../server")
-    // ... existing configuration ...
-    .WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", insightsConnectionString ?? "");
-
-var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
-    .WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", insightsConnectionString ?? "")
-    // ... existing configuration ...
+**Option A: Environment Variable (Recommended)**
+```bash
+export APPLICATIONINSIGHTS_CONNECTION_STRING="your-connection-string-here"
+cd scenario4/AppHost
+dotnet run
 ```
+
+**Option B: User Secrets (for local development)**
+```bash
+cd scenario4/AppHost
+dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "your-connection-string-here"
+dotnet run
+```
+
+**Option C: appsettings.json (not recommended - avoid committing secrets)**
+```json
+{
+  "APPLICATIONINSIGHTS_CONNECTION_STRING": "your-connection-string-here"
+}
+```
+
+When the AppHost starts, it will display:
+- ✅ `Application Insights monitoring enabled` (if connection string is set)
+- ℹ️ `Running without Application Insights (telemetry disabled)` (if not set)
+
+Both the Python server and Blazor webapp will automatically receive the connection string.
 
 ## What Gets Monitored
 
