@@ -22,7 +22,38 @@ The transcription interface provides:
 - Timestamp segments
 - Metadata (filename, processing time)
 
-**Note**: The webapp uses extended HTTP timeouts (5 minutes) to handle long-running transcription operations without timing out. See [OPTION2_IMPLEMENTATION.md](OPTION2_IMPLEMENTATION.md) for details.
+**Note**: The webapp now uses **async job mode** with status polling for better handling of long-running transcriptions. You can also cancel jobs in progress.
+
+## 🔄 Job Management
+
+The server now supports **asynchronous job management** for better handling of long-running transcriptions:
+
+### Features
+- **Job Queue**: Submit transcription jobs and get a Job ID immediately
+- **Status Tracking**: Poll job status without blocking the client
+- **Job Cancellation**: Cancel in-progress jobs
+- **Result Retrieval**: Download transcription results when jobs complete
+
+### API Endpoints
+- `POST /transcribe/async` - Start a new job (returns Job ID)
+- `GET /jobs/{job_id}/status` - Check job status
+- `GET /jobs/{job_id}/result` - Get completed transcription
+- `POST /jobs/{job_id}/cancel` - Cancel a job
+
+### Client Support
+- **Blazor Web App**: Automatically uses async mode with real-time progress updates
+- **Console Client**: Use `--async` flag for async mode
+  ```bash
+  TranscriptionClient audio.mp3 --async
+  ```
+
+### Benefits
+- No HTTP timeouts for long files
+- Better user experience with progress feedback
+- Support for concurrent transcription jobs
+- Ability to cancel long-running jobs
+
+For detailed API documentation, see [server/README.md](server/README.md).
 
 ## ⚡ GPU Configuration
 
