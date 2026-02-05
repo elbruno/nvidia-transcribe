@@ -95,8 +95,18 @@ async def load_model():
     global asr_model
     try:
         print(f"Loading model: {MODEL_NAME}")
+        # Model automatically uses GPU if available, falls back to CPU
+        # PyTorch/NeMo will detect CUDA and use GPU without explicit configuration
         asr_model = nemo_asr.models.ASRModel.from_pretrained(MODEL_NAME)
-        print("Model loaded successfully")
+        
+        # Check if GPU is being used
+        import torch
+        device = next(asr_model.parameters()).device
+        print(f"Model loaded successfully on device: {device}")
+        if torch.cuda.is_available():
+            print(f"GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            print("Running on CPU (GPU not available)")
     except Exception as e:
         print(f"Error loading model: {e}")
         raise
