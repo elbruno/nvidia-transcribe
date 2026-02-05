@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../NvidiaTranscribe.ServiceDefaults/NvidiaTranscribe.ServiceDefaults.csproj" />
+    <ProjectReference Include="../../ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 # Scenario 4: Client-Server Architecture
 
-A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized FastAPI application, and clients (C# console, Blazor WebAssembly, and Server-Side Blazor) communicate with it via REST API.
+A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized Python FastAPI application using GPU acceleration (with CPU fallback), and clients communicate with it via REST API.
 
 **NEW**: Now with .NET Aspire orchestration support for simplified development and deployment!
 
@@ -9,26 +9,21 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 ```
 ┌─────────────────┐         HTTP/REST        ┌──────────────────┐
 │  C# Console     │────────────────────────▶│  Python Server   │
-│  Client         │                          │  (FastAPI)       │
-└─────────────────┘                          │                  │
-                                              │  NVIDIA ASR      │
-┌─────────────────┐         HTTP/REST        │  (Parakeet)      │
-│  Blazor WASM    │────────────────────────▶│                  │
-│  App            │                          │  Docker/Aspire   │
+│  Client         │  (Standalone)            │  (FastAPI)       │
+│                 │                          │                  │
+└─────────────────┘                          │  NVIDIA ASR      │
+                                              │  (Parakeet)      │
+┌─────────────────┐         HTTP/REST        │                  │
+│  Server-Side    │────────────────────────▶│  GPU/CPU         │
+│  Blazor App     │  (with Aspire)           │  Docker Image    │
 └─────────────────┘                          └──────────────────┘
-                                                      ▲
-┌─────────────────┐         HTTP/REST                 │
-│  Server-Side    │───────────────────────────────────┘
-│  Blazor App     │  (with Aspire Service Defaults)
-└─────────────────┘
 ```
 
 ## Clients
 
 | Client | Type | Features |
 |--------|------|----------|
-| `clients/console/` | C# Console | CLI transcription with Aspire service discovery |
-| `clients/blazor/` | Blazor WebAssembly | Browser-based, client-side rendering |
+| `clients/console/` | C# Console | Standalone CLI transcription (not in orchestration) |
 | `clients/webapp/` | Server-Side Blazor | Full Aspire integration, OpenTelemetry, health checks |
 
 ## Quick Start Options
@@ -49,20 +44,28 @@ dotnet run
 
 This launches:
 - Aspire dashboard with logs and metrics
-- Python FastAPI server
-- Console client (ready to use)
+- Python FastAPI server (with GPU acceleration)
 - Blazor web client
 
 **Benefits**: Unified development experience, automatic service discovery, integrated monitoring.
+
+**Note**: The console client is available as a standalone application and is not part of the Aspire orchestration.
 
 See [AppHost/README.md](AppHost/README.md) for detailed Aspire instructions.
 
 ### Option 2: Docker (Recommended for Production)
 
+The server is containerized with GPU support (falls back to CPU if GPU is not available):
+
 ```bash
 cd scenario4/server
 docker build -t nvidia-asr-server .
+
+# With GPU support
 docker run -p 8000:8000 --gpus all nvidia-asr-server
+
+# Without GPU (CPU fallback)
+docker run -p 8000:8000 nvidia-asr-server
 ```
 
 ### Option 3: Local Development (Manual)
@@ -155,22 +158,19 @@ Update the API URL in clients to point to your Azure Container App URL.
 
 ### Server
 - **Python 3.10-3.12** (Python 3.13+ is NOT supported due to NeMo/lhotse incompatibility)
-- NVIDIA GPU with CUDA support (recommended)
+- NVIDIA GPU with CUDA support (recommended, but falls back to CPU if not available)
 - Docker (for containerized deployment)
 - See `server/requirements.txt` for Python dependencies
 
-### Console Client
+### Console Client (Standalone)
 - .NET 10.0 SDK
 - Cross-platform (Windows, Linux, macOS)
+- Can be run independently without Aspire orchestration
 
-### Blazor WebAssembly Client
+### Server-Side Blazor Web Client
 - .NET 10.0 SDK
 - Modern web browser
-
-### Server-Side Blazor Client
-- .NET 10.0 SDK
-- Modern web browser
-- Includes Aspire ServiceDefaults integration
+- Includes ServiceDefaults integration for Aspire
 
 ## Development
 
@@ -214,20 +214,27 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ### Console Client Development
 
+The console client runs as a standalone application:
+
 ```bash
 cd scenario4/clients/console
 dotnet build
+dotnet run -- <audio-file-path>
+
+# Example:
 dotnet run -- ../../test_audio.mp3
-# Or when using Aspire, the client auto-discovers the server
 ```
 
 ### Web Client Development
 
+The web client runs with Aspire orchestration:
+
 ```bash
-cd scenario4/clients/blazor
-dotnet watch run
-# Or run via Aspire for automatic server discovery
+cd scenario4/AppHost
+dotnet run
 ```
+
+Then navigate to the Aspire dashboard to access the web client.
 
 ## Security Considerations
 

@@ -1,24 +1,26 @@
 # .NET Aspire AppHost for NVIDIA ASR Transcription
 
-This AppHost orchestrates the entire NVIDIA ASR transcription stack using .NET Aspire:
-- Python FastAPI server (via Uvicorn)
-- C# Console client
-- Blazor WebAssembly client
+This AppHost orchestrates the NVIDIA ASR transcription stack using .NET Aspire:
+- Python FastAPI server (via Uvicorn) with GPU acceleration
+- Server-side Blazor web client
+
+**Note**: The console client is available as a standalone application and is not orchestrated by Aspire.
 
 ## Prerequisites
 
-- **.NET 8.0 SDK** or later
+- **.NET 10.0 SDK** or later
 - **Python 3.10-3.12** with all dependencies installed (see main [README.md](../README.md))
-- **NVIDIA GPU** with CUDA support (recommended)
+- **NVIDIA GPU** with CUDA support (recommended, but falls back to CPU automatically)
 
 ## Setup
 
 1. **Install Python dependencies** (if not already done):
    ```bash
    cd ../server
-   pip install torch --index-url https://download.pytorch.org/whl/cu121
-   pip install -r requirements.txt
-   python ../../fix_lhotse.py
+   # Windows
+   .\setup-venv.ps1
+   # Linux/macOS
+   ./setup-venv.sh
    cd ../AppHost
    ```
 
@@ -37,9 +39,8 @@ dotnet run
 
 This will:
 1. Launch the Aspire dashboard (typically at `http://localhost:15888`)
-2. Start the Python FastAPI server (apiserver)
-3. Start the Console client (console-client) - ready to use
-4. Start the Blazor web app (blazor-client) - accessible via browser
+2. Start the Python FastAPI server (apiserver) with GPU/CPU detection
+3. Start the server-side Blazor web client (webappClient)
 
 ### Aspire Dashboard
 
@@ -59,14 +60,14 @@ Access it at `http://localhost:15888` (URL shown in console output)
 - Available at the endpoint shown in the Aspire dashboard
 - Health check: GET `/health`
 - Transcription: POST `/transcribe`
+- GPU acceleration with automatic CPU fallback
 
-### Console Client
-- Available as a project in Aspire
-- Run with: Pass audio file path as launch argument in Aspire dashboard
-- Or run directly: `cd ../clients/console && dotnet run audio.mp3`
-- Automatically discovers the API server via Aspire service discovery
+### Console Client (Standalone)
+- **Not orchestrated by Aspire** - runs independently
+- Run directly: `cd ../clients/console && dotnet run -- audio.mp3`
+- Provide the API server URL when prompted, or it will use localhost:8000
 
-### Blazor Web Client
+### Server-Side Blazor Web Client
 - Automatically started by Aspire
 - Open the URL shown in the Aspire dashboard (typically `http://localhost:5xxx`)
 - Upload audio files via the web interface
@@ -78,23 +79,27 @@ Access it at `http://localhost:15888` (URL shown in console output)
 ┌─────────────────────────────────────────────────────────────┐
 │                    .NET Aspire AppHost                       │
 │  (Orchestration, Service Discovery, Monitoring, Logs)        │
-└───────┬──────────────────────┬──────────────────────┬────────┘
-        │                      │                      │
-        ▼                      ▼                      ▼
-┌───────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ Python Server │    │  Console Client  │    │  Blazor Client   │
-│  (FastAPI)    │◄───│     (C#)         │    │  (WebAssembly)   │
-│  Port: 8000   │    └──────────────────┘    └──────────────────┘
-│  NVIDIA ASR   │              ▲                       ▲
-└───────────────┘              │                       │
-                               │                       │
-                          Service Discovery     Service Discovery
+└───────┬──────────────────────┬──────────────────────────────┘
+        │                      │
+        ▼                      ▼
+┌───────────────┐    ┌──────────────────┐
+│ Python Server │    │ Blazor WebApp    │
+│  (FastAPI)    │◄───│ (Server-Side)    │
+│  Port: 8000   │    └──────────────────┘
+│  NVIDIA ASR   │              ▲
+│  GPU/CPU Auto │              │
+└───────────────┘         Service Discovery
+
+  Console Client (Standalone - not orchestrated)
+        │
+        ▼
+   API Server (http://localhost:8000)
 ```
 
 ## Benefits of Using Aspire
 
-1. **Single Command Startup**: Start all services with `dotnet run`
-2. **Service Discovery**: Clients automatically find the API server
+1. **Single Command Startup**: Start server and web client with `dotnet run`
+2. **Service Discovery**: Web client automatically finds the API server
 3. **Unified Monitoring**: Dashboard shows logs, metrics, and traces
 4. **Development Productivity**: Fast iterative development with live reload
 5. **Production Ready**: Generate deployment manifests for cloud deployment
@@ -152,17 +157,17 @@ See [Azure Deployment Guide](../AZURE_DEPLOYMENT.md) for detailed instructions.
 
 ## Standalone Mode
 
-You can still run services independently without Aspire:
+The console client runs independently:
 
+```bash
+# Console Client (standalone)
+cd ../clients/console && dotnet run -- audio.mp3
+```
+
+The server can also run independently:
 ```bash
 # Server
 cd ../server && uvicorn app:app --host 0.0.0.0 --port 8000
-
-# Console Client
-cd ../clients/console && dotnet run audio.mp3 http://localhost:8000
-
-# Blazor Client
-cd ../clients/blazor && dotnet run
 ```
 
 ## Learn More

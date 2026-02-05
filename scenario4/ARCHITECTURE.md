@@ -8,12 +8,13 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌──────────────────┐              ┌──────────────────┐        │
-│  │  C# Console App  │              │  Blazor Web App  │        │
-│  │  (.NET 8.0)      │              │  (WebAssembly)   │        │
+│  │  C# Console App  │              │ Server-Side      │        │
+│  │  (.NET 10.0)     │              │ Blazor Web App   │        │
 │  │                  │              │                  │        │
 │  │  • CLI interface │              │  • Browser UI    │        │
 │  │  • File upload   │              │  • File upload   │        │
-│  │  • Result display│              │  • Live results  │        │
+│  │  • Standalone    │              │  • Live results  │        │
+│  │  • Result display│              │  • Aspire+OpenTel│        │
 │  └────────┬─────────┘              └────────┬─────────┘        │
 │           │                                 │                  │
 │           └─────────────┬───────────────────┘                  │
@@ -41,6 +42,8 @@
 │           │  • File upload           │                         │
 │           │  • Audio conversion      │                         │
 │           │  • Background cleanup    │                         │
+│           │  • GPU acceleration      │                         │
+│           │  • CPU fallback          │                         │
 │           └──────────┬───────────────┘                         │
 │                      │                                         │
 │                      ▼                                         │
@@ -51,6 +54,7 @@
 │           │  • Text generation       │                         │
 │           │  • Timestamp extraction  │                         │
 │           │  • GPU accelerated       │                         │
+│           │  • CPU fallback          │                         │
 │           └──────────────────────────┘                         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -62,11 +66,19 @@
 │  Local Development:                                             │
 │  • uvicorn (Python dev server)                                  │
 │  • Direct execution                                             │
+│  • GPU/CPU automatic detection                                  │
 │                                                                 │
 │  Docker:                                                        │
 │  • Containerized server                                         │
 │  • GPU support via --gpus flag                                  │
+│  • CPU fallback if GPU not available                            │
 │  • CUDA 12.1 base image                                         │
+│                                                                 │
+│  .NET Aspire:                                                   │
+│  • Orchestration for web client + server                        │
+│  • Service discovery and health checks                          │
+│  • OpenTelemetry integration                                    │
+│  • Console client runs standalone                               │
 │                                                                 │
 │  Azure Cloud:                                                   │
 │  • Azure Container Apps (recommended)                           │
@@ -136,12 +148,13 @@
 ### Console Client (C#)
 
 **Technology Stack:**
-- .NET 8.0
+- .NET 10.0
 - System.Net.Http for REST calls
 - System.Text.Json for JSON parsing
+- Standalone application (not orchestrated)
 
 **Key Files:**
-- `clients/console/Program.cs` - Main application (150 lines)
+- `clients/console/Program.cs` - Main application
 - `clients/console/TranscriptionClient.csproj` - Project file
 
 **Features:**
@@ -149,34 +162,41 @@
 - Server health check
 - File upload via multipart form
 - Formatted output with timestamps
+- Can run independently without orchestration
 
-### Web Client (Blazor)
+### Web Client (Server-Side Blazor)
 
 **Technology Stack:**
-- Blazor WebAssembly
-- .NET 8.0
+- Server-Side Blazor
+- .NET 10.0
 - Modern HTML5/CSS3
+- Aspire ServiceDefaults integration
 
 **Key Files:**
-- `clients/blazor/Pages/Index.razor` - Main UI (145 lines)
-- `clients/blazor/Program.cs` - App bootstrap
-- `clients/blazor/wwwroot/css/app.css` - Styling
+- `clients/webapp/Components/Pages/Transcribe.razor` - Main UI
+- `clients/webapp/Program.cs` - App bootstrap
+- `clients/webapp/TranscriptionWebApp2.csproj` - Project file
 
 **Features:**
 - File upload with InputFile component
 - Async API calls
 - Real-time status updates
 - Responsive design
+- OpenTelemetry integration
+- Health checks
+- Service discovery via Aspire
 
 ## Deployment Architectures
 
-### Local Development
+### Local Development with Aspire
 
 ```
 Developer Machine
-├─> Terminal 1: uvicorn server
-├─> Terminal 2: dotnet run (console)
-└─> Terminal 3: dotnet run (web) → Browser
+├─> Aspire AppHost: dotnet run
+    ├─> Python Server (uvicorn)
+    ├─> Blazor Web Client
+    └─> Aspire Dashboard (monitoring)
+└─> Console Client: standalone dotnet run
 ```
 
 ### Docker Deployment
@@ -184,7 +204,8 @@ Developer Machine
 ```
 Docker Host
 ├─> Container: nvidia-asr-server (port 8000)
-│   └─> GPU access via --gpus flag
+│   ├─> GPU access via --gpus flag
+│   └─> CPU fallback if no GPU
 └─> Host: dotnet run (clients)
 ```
 
@@ -196,10 +217,8 @@ Azure Cloud
 │   └─> nvidia-asr-api container
 │       ├─> Auto-scaling (1-5 instances)
 │       ├─> HTTPS ingress
+│       ├─> GPU support (optional)
 │       └─> Managed compute
-│
-├─> Azure Static Web Apps
-│   └─> Blazor client (static files)
 │
 └─> Azure Container Registry
     └─> Container images

@@ -62,22 +62,28 @@ dotnet run audio.mp3 http://server:8000
 # Build
 dotnet build
 
-# Publish
-dotnet publish -c Release -r win-x64 --self-contained
-```
-
-### Blazor Web App
+### Server-Side Blazor Web App
 ```bash
-cd scenario4/clients/blazor
+cd scenario4/AppHost
 
-# Run
+# Run with Aspire (recommended)
 dotnet run
 
-# Watch mode (auto-reload)
-dotnet watch run
+# This starts both the Python server and web client
+```
 
-# Build for production
-dotnet publish -c Release -o ./publish
+### Console Client (Standalone)
+```bash
+cd scenario4/clients/console
+
+# Run
+dotnet run -- <audio-file-path>
+
+# Example
+dotnet run -- ../../test_audio.mp3
+
+# Publish
+dotnet publish -c Release -r win-x64 --self-contained
 ```
 
 ## API Endpoints
@@ -141,4 +147,5 @@ python test_server.py http://server:8000
 - Server docs: `scenario4/server/README.md`
 - Azure deployment: `scenario4/AZURE_DEPLOYMENT.md`
 - Console client: `scenario4/clients/console/README.md`
-- Web client: `scenario4/clients/blazor/README.md`
+- Web client: `scenario4/clients/webapp/README.md`
+- Aspire orchestration: `scenario4/AppHost/README.md`

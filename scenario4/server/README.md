@@ -1,6 +1,6 @@
 # NVIDIA ASR Transcription Server
 
-FastAPI-based REST API server for audio transcription using NVIDIA Parakeet model.
+FastAPI-based REST API server for audio transcription using NVIDIA Parakeet model with GPU acceleration (automatic CPU fallback).
 
 ## Features
 
@@ -8,13 +8,14 @@ FastAPI-based REST API server for audio transcription using NVIDIA Parakeet mode
 - 📝 Returns text and timestamp segments
 - 🔄 Supports WAV, MP3, and FLAC formats
 - 🚀 FastAPI with automatic API documentation
-- 🐳 Docker containerization
+- 🐳 Docker containerization with GPU support
 - 🔧 Health check endpoint
+- ⚡ GPU acceleration (with automatic CPU fallback)
 
 ## Requirements
 
 - Python 3.10-3.12 (Python 3.13+ is **NOT** supported due to NeMo/lhotse incompatibility)
-- NVIDIA GPU with CUDA support (recommended)
+- NVIDIA GPU with CUDA support (recommended, but not required - automatically falls back to CPU)
 - Docker (for containerized deployment)
 
 ## Installation

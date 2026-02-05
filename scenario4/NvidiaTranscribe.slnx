@@ -1,10 +1,9 @@
 <Solution>
   <Folder Name="/AppHost/">
     <Project Path="AppHost/NvidiaTranscribe.AppHost.csproj" />
-    <Project Path="NvidiaTranscribe.ServiceDefaults/NvidiaTranscribe.ServiceDefaults.csproj" Id="414fdc0c-b2ac-479b-810d-10c69289ab38" />
+    <Project Path="ServiceDefaults/ServiceDefaults.csproj" Id="414fdc0c-b2ac-479b-810d-10c69289ab38" />
   </Folder>
   <Folder Name="/Clients/">
-    <Project Path="clients/blazor/TranscriptionWebApp.csproj" />
     <Project Path="clients/console/TranscriptionClient.csproj" />
     <Project Path="clients/webapp/TranscriptionWebApp2.csproj" />
   </Folder>
