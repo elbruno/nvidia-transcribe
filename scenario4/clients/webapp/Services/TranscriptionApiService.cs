@@ -28,9 +28,15 @@ public class TranscriptionApiService
     {
         var client = _httpClientFactory.CreateClient("api");
 
-        using var content = new MultipartFormDataContent();
+        // Buffer file content to support retry on transient failures
+        // (StreamContent cannot be re-read after the first attempt)
         await using var stream = file.OpenReadStream(maxAllowedSize: MaxFileSize);
-        var fileContent = new StreamContent(stream);
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetContentType(file.Name));
         content.Add(fileContent, "file", file.Name);
 
@@ -79,9 +85,15 @@ public class TranscriptionApiService
     {
         var client = _httpClientFactory.CreateClient("api");
 
-        using var content = new MultipartFormDataContent();
+        // Buffer file content to support retry on transient failures
+        // (StreamContent cannot be re-read after the first attempt)
         await using var stream = file.OpenReadStream(maxAllowedSize: MaxFileSize);
-        var fileContent = new StreamContent(stream);
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        var fileBytes = memoryStream.ToArray();
+
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetContentType(file.Name));
         content.Add(fileContent, "file", file.Name);
 

@@ -11,12 +11,12 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Add HttpClient for API communication with service discovery
+// Note: Resilience handler (timeouts, retries) is configured by ServiceDefaults
 builder.Services.AddHttpClient("api", (serviceProvider, client) =>
 {
     // Use Aspire service discovery to resolve the API endpoint
     client.BaseAddress = new Uri("http://apiserver");
-})
-.AddStandardResilienceHandler();
+});
 
 // Register TranscriptionApiService
 builder.Services.AddScoped<TranscriptionApiService>();
