@@ -30,13 +30,16 @@ namespace Microsoft.Extensions.Hosting
             {
                 // Turn on resilience by default
                 // http.AddStandardResilienceHandler();
-                // Turn on resilience by default with extended timeouts for transcribe model requests                
-                http.AddStandardResilienceHandler(options =>
+
+                http.AddStandardResilienceHandler(config =>
                 {
-                    options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(5);
-                    options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
-                    options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+                    TimeSpan timeSpan = TimeSpan.FromMinutes(5);
+                    config.AttemptTimeout.Timeout = timeSpan;
+                    config.CircuitBreaker.SamplingDuration = timeSpan * 2;
+                    config.TotalRequestTimeout.Timeout = timeSpan * 3;
+                    config.Retry.MaxRetryAttempts = 1;
                 });
+
 
                 // Turn on service discovery by default
                 http.AddServiceDiscovery();
