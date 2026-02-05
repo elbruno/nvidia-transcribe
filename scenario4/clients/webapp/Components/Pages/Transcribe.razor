@@ -1,5 +1,6 @@
 @page "/transcribe"
 @inject TranscriptionApiService ApiService
+@inject ILogger<Transcribe> Logger
 
 <PageTitle>Transcribe Audio</PageTitle>
 
@@ -10,20 +11,22 @@
         <h3>Upload Audio File</h3>
         <p class="supported-formats">Supported formats: WAV, MP3, FLAC (max 50MB)</p>
         
-        @if (string.IsNullOrEmpty(selectedFileName))
-        {
-            <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
-                 @ondragenter="HandleDragEnter"
-                 @ondragleave="HandleDragLeave"
-                 @ondragover:preventDefault>
-                <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" />
-                <div class="drop-zone-content">
-                    <span class="upload-icon">📁</span>
-                    <p>Drag and drop your audio file here or click to browse</p>
-                </div>
+        <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
+             @ondragenter="HandleDragEnter"
+             @ondragleave="HandleDragLeave"
+             @ondragover:preventDefault
+             @ondrop="HandleDrop">
+            <InputFile id="file-input" 
+                       OnChange="HandleFileSelected" 
+                       accept=".wav,.mp3,.flac"
+                       class="@(string.IsNullOrEmpty(selectedFileName) ? "visible-input" : "hidden-input")" />
+            <div class="drop-zone-content">
+                <span class="upload-icon">📁</span>
+                <p>Drag and drop your audio file here or click to browse</p>
             </div>
-        }
-        else
+        </div>
+
+        @if (!string.IsNullOrEmpty(selectedFileName))
         {
             <div class="file-selected-container">
                 <div class="file-preview">
@@ -36,7 +39,7 @@
                 </div>
                 
                 <div class="action-buttons">
-                    <button class="btn btn-secondary btn-change" @onclick="TriggerFileSelect" disabled="@isProcessing">
+                    <button class="btn btn-secondary btn-change" @onclick="ChangeFile" disabled="@isProcessing">
                         📂 Change File
                     </button>
                     <button class="btn btn-primary btn-start" @onclick="TranscribeAudio" disabled="@isProcessing">
@@ -51,10 +54,6 @@
                         }
                     </button>
                 </div>
-            </div>
-            
-            <div class="hidden-file-input">
-                <InputFile OnChange="HandleFileSelected" accept=".wav,.mp3,.flac" @ref="fileInputRef" />
             </div>
         }
     </div>
@@ -129,46 +128,64 @@
     private bool isDragOver = false;
     private string errorMessage = string.Empty;
     private TranscriptionResponse? transcriptionResult;
-    private InputFile? fileInputRef;
 
     private void HandleDragEnter()
     {
         isDragOver = true;
+        Logger.LogDebug("Drag enter");
     }
 
     private void HandleDragLeave()
     {
         isDragOver = false;
+        Logger.LogDebug("Drag leave");
     }
 
-    private void HandleFileSelected(InputFileChangeEventArgs e)
+    private async Task HandleDrop(DragEventArgs e)
     {
+        isDragOver = false;
+        Logger.LogDebug("Drop event triggered, file count: {Count}", e.DataTransfer.Files.Count());
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        Logger.LogInformation("File selected: {FileName}, Size: {Size}", e.File.Name, e.File.Size);
+        
         selectedFile = e.File;
         selectedFileName = e.File.Name;
         selectedFileSize = e.File.Size;
         errorMessage = string.Empty;
         transcriptionResult = null;
         isDragOver = false;
+        
+        StateHasChanged();
     }
 
     private void ClearFile()
     {
+        Logger.LogDebug("Clear file");
         selectedFile = null;
         selectedFileName = string.Empty;
         selectedFileSize = 0;
         errorMessage = string.Empty;
         transcriptionResult = null;
+        StateHasChanged();
     }
 
-    private void TriggerFileSelect()
+    private async Task ChangeFile()
     {
-        // The hidden InputFile will handle this via its own click
+        Logger.LogDebug("Change file");
         ClearFile();
+        // The input will be re-rendered and ready for next selection
     }
 
     private async Task TranscribeAudio()
     {
-        if (selectedFile == null) return;
+        if (selectedFile == null)
+        {
+            errorMessage = "No file selected";
+            return;
+        }
 
         isProcessing = true;
         errorMessage = string.Empty;
@@ -177,15 +194,19 @@
 
         try
         {
+            Logger.LogInformation("Starting transcription for file: {FileName}", selectedFile.Name);
             transcriptionResult = await ApiService.TranscribeAsync(selectedFile);
+            Logger.LogInformation("Transcription completed successfully");
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Transcription failed");
             errorMessage = $"Error: {ex.Message}";
         }
         finally
         {
             isProcessing = false;
+            StateHasChanged();
         }
     }
 
@@ -245,7 +266,7 @@
         background: rgba(118, 185, 0, 0.05);
     }
 
-    .file-drop-zone input[type="file"] {
+    .file-drop-zone #file-input {
         position: absolute;
         top: 0;
         left: 0;
@@ -253,6 +274,10 @@
         height: 100%;
         opacity: 0;
         cursor: pointer;
+    }
+
+    .file-drop-zone #file-input.hidden-input {
+        display: none;
     }
 
     .drop-zone-content {
@@ -267,7 +292,7 @@
 
     /* File Selected Container */
     .file-selected-container {
-        margin-top: 10px;
+        margin-top: 20px;
     }
 
     .file-preview {
@@ -382,10 +407,6 @@
         box-shadow: none;
         cursor: not-allowed;
         transform: none;
-    }
-
-    .hidden-file-input {
-        display: none;
     }
 
     .spinner {
