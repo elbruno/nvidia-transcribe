@@ -2,6 +2,7 @@
 @inject TranscriptionApiService ApiService
 @inject ILogger<Transcribe> Logger
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>Transcribe Audio</PageTitle>
 
@@ -40,7 +41,7 @@
 
     <!-- Section 2: Start Transcribing (Always Visible, Always Enabled) -->
     <div class="section section-action">
-        <button class="btn-transcribe" @onclick="TranscribeAudio">
+        <button class="btn-transcribe" @onclick="TranscribeAudio" disabled="@isProcessing">
             @if (isProcessing)
             {
                 <span class="spinner-small"></span>
@@ -51,6 +52,13 @@
                 <span>▶️ Start Transcription</span>
             }
         </button>
+        
+        @if (isProcessing && !string.IsNullOrEmpty(currentJobId))
+        {
+            <button class="btn-cancel" @onclick="CancelJob">
+                <span>⏹️ Cancel Job</span>
+            </button>
+        }
     </div>
 
     <!-- Section 3: Transcription Result (Multiline Textbox) -->
@@ -85,10 +93,17 @@
     private string transcriptionText = string.Empty;
     private List<LogEntry> progressLogs = new();
     private ElementReference logElement;
+    private string? currentJobId;
+    private System.Threading.Timer? pollingTimer;
 
     protected override void OnInitialized()
     {
         AddLog("System ready. Select an audio file to begin.", "info");
+    }
+
+    public void Dispose()
+    {
+        pollingTimer?.Dispose();
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -107,6 +122,9 @@
         selectedFileName = string.Empty;
         selectedFileSize = 0;
         transcriptionText = string.Empty;
+        currentJobId = null;
+        pollingTimer?.Dispose();
+        pollingTimer = null;
         AddLog("File cleared", "info");
         StateHasChanged();
     }
@@ -131,33 +149,122 @@
 
         try
         {
-            AddLog($"Starting transcription for: {selectedFile.Name}", "info");
+            AddLog($"Starting async transcription job for: {selectedFile.Name}", "info");
             AddLog("Uploading file to server...", "info");
             
-            var result = await ApiService.TranscribeAsync(selectedFile);
+            // Start async job
+            var jobStart = await ApiService.StartTranscriptionJobAsync(selectedFile);
+            currentJobId = jobStart.JobId;
             
-            AddLog("✓ Upload complete", "success");
-            AddLog("Processing audio with NVIDIA ASR...", "info");
-            AddLog($"✓ Transcription complete! ({result.Segments?.Length ?? 0} segments)", "success");
+            AddLog($"✓ Upload complete - Job ID: {currentJobId}", "success");
+            AddLog($"Job status: {jobStart.Status}", "info");
+            AddLog("Monitoring job progress...", "info");
             
-            transcriptionText = result.Text;
-            
-            if (!string.IsNullOrEmpty(result.Text))
-            {
-                AddLog($"Total text length: {result.Text.Length} characters", "info");
-            }
-            
-            AddLog("Ready for next transcription", "success");
+            // Poll for job completion
+            await PollJobStatus(currentJobId);
         }
         catch (Exception ex)
         {
             AddLog($"✗ Error: {ex.Message}", "error");
-            Logger.LogError(ex, "Transcription failed");
-        }
-        finally
-        {
+            Logger.LogError(ex, "Transcription job failed");
             isProcessing = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task PollJobStatus(string jobId)
+    {
+        const int maxAttempts = 120; // 10 minutes with 5-second intervals
+        int attempts = 0;
+
+        while (attempts < maxAttempts && isProcessing)
+        {
+            try
+            {
+                await Task.Delay(5000); // Poll every 5 seconds
+                
+                var jobInfo = await ApiService.GetJobStatusAsync(jobId);
+                
+                if (jobInfo.Status == "completed")
+                {
+                    AddLog("✓ Job completed! Retrieving results...", "success");
+                    
+                    var result = await ApiService.GetJobResultAsync(jobId);
+                    transcriptionText = result.Text;
+                    
+                    AddLog($"✓ Transcription complete! ({result.Segments?.Length ?? 0} segments)", "success");
+                    
+                    if (!string.IsNullOrEmpty(result.Text))
+                    {
+                        AddLog($"Total text length: {result.Text.Length} characters", "info");
+                    }
+                    
+                    AddLog("Ready for next transcription", "success");
+                    isProcessing = false;
+                    break;
+                }
+                else if (jobInfo.Status == "failed")
+                {
+                    AddLog($"✗ Job failed: {jobInfo.Error ?? "Unknown error"}", "error");
+                    isProcessing = false;
+                    break;
+                }
+                else if (jobInfo.Status == "cancelled")
+                {
+                    AddLog("Job was cancelled", "warning");
+                    isProcessing = false;
+                    break;
+                }
+                else
+                {
+                    // Still processing
+                    if (attempts % 6 == 0) // Log progress every 30 seconds
+                    {
+                        AddLog($"Job status: {jobInfo.Status} (elapsed: {attempts * 5}s)", "info");
+                    }
+                }
+                
+                attempts++;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ Error polling job status: {ex.Message}", "error");
+                Logger.LogError(ex, "Failed to poll job status");
+                isProcessing = false;
+                break;
+            }
+        }
+
+        if (attempts >= maxAttempts)
+        {
+            AddLog("⚠️ Job polling timeout. The job may still be processing on the server.", "warning");
+            isProcessing = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CancelJob()
+    {
+        if (string.IsNullOrEmpty(currentJobId))
+        {
+            AddLog("⚠️ No active job to cancel", "warning");
+            return;
+        }
+
+        try
+        {
+            AddLog($"Cancelling job: {currentJobId}", "info");
+            var result = await ApiService.CancelJobAsync(currentJobId);
+            AddLog($"✓ {result.Message}", "success");
+            isProcessing = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            AddLog($"✗ Error cancelling job: {ex.Message}", "error");
+            Logger.LogError(ex, "Failed to cancel job");
         }
     }
 
@@ -364,12 +471,43 @@
         transition: all 0.3s ease;
     }
 
-    .btn-transcribe:hover {
+    .btn-transcribe:hover:not(:disabled) {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(118, 185, 0, 0.5);
     }
 
-    .btn-transcribe:active {
+    .btn-transcribe:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .btn-transcribe:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-cancel {
+        padding: 18px 40px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        border: none;
+        border-radius: 50px;
+        color: white;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+        transition: all 0.3s ease;
+        margin-left: 20px;
+    }
+
+    .btn-cancel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+    }
+
+    .btn-cancel:active {
         transform: translateY(0);
     }
 
