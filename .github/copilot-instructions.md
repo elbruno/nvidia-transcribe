@@ -42,6 +42,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │   ├── README.md
 │   ├── QUICKREF.md
 │   ├── USAGE_EXAMPLES.md
+│   ├── ASYNC_MODE_IMPLEMENTATION.md  # Async patterns documentation
 │   └── AZURE_DEPLOYMENT.md
 └── output/                     # Shared output directory
 ```
@@ -119,21 +120,27 @@ When extending functionality:
 ### Scenario 4 (Client-Server) Patterns
 
 When extending the client-server architecture:
-1. **Server**: Use FastAPI patterns with async/await
+1. **Server**: Use FastAPI patterns with async/await (see ASYNC_MODE_IMPLEMENTATION.md for detailed patterns)
 2. **Clients**: Follow REST API conventions with proper error handling
 3. **CORS**: Enable for web clients, configure appropriately for production
 4. **Docker**: Maintain multi-stage builds with CUDA support
 5. **Azure**: Use Container Apps for serverless deployment
 
-**Server Pattern:**
+**Server Pattern (Async Mode):**
 ```python
 @app.post("/endpoint")
 async def endpoint(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     # 1. Validate input
-    # 2. Process file
-    # 3. Schedule cleanup
-    # 4. Return response
+    # 2. Process file (sync CPU-bound work is OK in async function)
+    # 3. Schedule cleanup with background_tasks.add_task()
+    # 4. Return response (cleanup happens after response sent)
 ```
+
+**Key Async Concepts**:
+- Use `async def` for endpoint handlers (enables concurrent request handling)
+- Use `background_tasks.add_task()` to schedule cleanup operations after response
+- Sync operations (like model inference) can run in async functions
+- See `scenario4/ASYNC_MODE_IMPLEMENTATION.md` for complete async patterns
 
 **Client Pattern (C#):**
 ```csharp

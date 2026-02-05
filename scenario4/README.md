@@ -36,6 +36,22 @@ See **[GPU_SETUP_GUIDE.md](GPU_SETUP_GUIDE.md)** for:
 
 The application works in both GPU and CPU modes - GPU is an optimization, not a requirement.
 
+## 🔄 Async Mode Implementation
+
+The server uses **async/await patterns** with FastAPI to handle long-running transcription operations efficiently:
+
+- **Non-blocking I/O**: Server handles multiple requests concurrently
+- **Background cleanup**: Temporary files cleaned up after response sent
+- **Better performance**: Reduced response times for clients
+- **Scalability**: More concurrent connections with fewer resources
+
+See **[ASYNC_MODE_IMPLEMENTATION.md](ASYNC_MODE_IMPLEMENTATION.md)** for:
+- Detailed async patterns and best practices
+- Background task processing
+- Client-side async patterns (C# and Blazor)
+- Performance benefits and tuning
+- Troubleshooting async issues
+
 ## Architecture
 
 ```

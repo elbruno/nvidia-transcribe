@@ -146,6 +146,9 @@ python test_server.py http://server:8000
 - Main README: `scenario4/README.md`
 - Server docs: `scenario4/server/README.md`
 - Azure deployment: `scenario4/AZURE_DEPLOYMENT.md`
+- Async mode patterns: `scenario4/ASYNC_MODE_IMPLEMENTATION.md`
+- GPU setup: `scenario4/GPU_SETUP_GUIDE.md`
+- HTTP timeouts: `scenario4/OPTION2_IMPLEMENTATION.md`
 - Console client: `scenario4/clients/console/README.md`
 - Web client: `scenario4/clients/webapp/README.md`
 - Aspire orchestration: `scenario4/AppHost/README.md`
