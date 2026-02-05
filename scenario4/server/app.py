@@ -13,6 +13,7 @@ from typing import Optional
 import librosa
 import nemo.collections.asr as nemo_asr
 import soundfile as sf
+import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -100,7 +101,6 @@ async def load_model():
         asr_model = nemo_asr.models.ASRModel.from_pretrained(MODEL_NAME)
         
         # Check if GPU is being used
-        import torch
         device = next(asr_model.parameters()).device
         print(f"Model loaded successfully on device: {device}")
         if torch.cuda.is_available():

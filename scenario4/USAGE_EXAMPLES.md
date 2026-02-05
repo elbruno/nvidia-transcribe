@@ -154,16 +154,7 @@ dotnet run -- audio.mp3
 ```
 
 **Web Client (via Aspire locally, connecting to Azure server):**
-Configure the API endpoint to point to your Azure Container App URL in the Aspire configuration.
-dotnet publish -c Release -o ./publish
-
-# Deploy to Azure Static Web Apps
-az staticwebapp create \
-  --name asr-webapp \
-  --resource-group nvidia-asr-rg \
-  --source ./publish/wwwroot \
-  --location westus2
-```
+Configure the API endpoint to point to your Azure Container App URL in the Aspire configuration or appsettings.
 
 ## Example 4: Batch Processing with Console Client
 
