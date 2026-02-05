@@ -1,6 +1,6 @@
 # Scenario 4: Client-Server Architecture
 
-A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized FastAPI application, and clients (C# console and Blazor web app) communicate with it via REST API.
+A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized FastAPI application, and clients (C# console, Blazor WebAssembly, and Server-Side Blazor) communicate with it via REST API.
 
 **NEW**: Now with .NET Aspire orchestration support for simplified development and deployment!
 
@@ -13,10 +13,23 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 └─────────────────┘                          │                  │
                                               │  NVIDIA ASR      │
 ┌─────────────────┐         HTTP/REST        │  (Parakeet)      │
-│  Blazor Web     │────────────────────────▶│                  │
+│  Blazor WASM    │────────────────────────▶│                  │
 │  App            │                          │  Docker/Aspire   │
 └─────────────────┘                          └──────────────────┘
+                                                      ▲
+┌─────────────────┐         HTTP/REST                 │
+│  Server-Side    │───────────────────────────────────┘
+│  Blazor App     │  (with Aspire Service Defaults)
+└─────────────────┘
 ```
+
+## Clients
+
+| Client | Type | Features |
+|--------|------|----------|
+| `clients/console/` | C# Console | CLI transcription with Aspire service discovery |
+| `clients/blazor/` | Blazor WebAssembly | Browser-based, client-side rendering |
+| `clients/webapp/` | Server-Side Blazor | Full Aspire integration, OpenTelemetry, health checks |
 
 ## Quick Start Options
 
@@ -147,12 +160,17 @@ Update the API URL in clients to point to your Azure Container App URL.
 - See `server/requirements.txt` for Python dependencies
 
 ### Console Client
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - Cross-platform (Windows, Linux, macOS)
 
-### Web Client
-- .NET 8.0 SDK
+### Blazor WebAssembly Client
+- .NET 10.0 SDK
 - Modern web browser
+
+### Server-Side Blazor Client
+- .NET 10.0 SDK
+- Modern web browser
+- Includes Aspire ServiceDefaults integration
 
 ## Development
 
