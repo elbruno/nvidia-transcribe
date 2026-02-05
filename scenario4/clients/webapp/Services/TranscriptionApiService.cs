@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace TranscriptionWebApp2.Services;
@@ -229,7 +230,11 @@ public class Segment
 public class HealthResponse
 {
     public string Status { get; set; } = string.Empty;
+    
+    [JsonPropertyName("model_loaded")]
     public bool ModelLoaded { get; set; }
+    
+    [JsonPropertyName("model_name")]
     public string ModelName { get; set; } = string.Empty;
 }
 
@@ -238,7 +243,9 @@ public class HealthResponse
 /// </summary>
 public class JobStartResponse
 {
+    [JsonPropertyName("job_id")]
     public string JobId { get; set; } = string.Empty;
+    
     public string Status { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
@@ -248,11 +255,18 @@ public class JobStartResponse
 /// </summary>
 public class JobInfo
 {
+    [JsonPropertyName("job_id")]
     public string JobId { get; set; } = string.Empty;
+    
     public string Status { get; set; } = string.Empty;
     public string Filename { get; set; } = string.Empty;
+    
+    [JsonPropertyName("created_at")]
     public string CreatedAt { get; set; } = string.Empty;
+    
+    [JsonPropertyName("completed_at")]
     public string? CompletedAt { get; set; }
+    
     public string? Error { get; set; }
     public TranscriptionResponse? Result { get; set; }
 }
