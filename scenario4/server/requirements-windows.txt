@@ -32,3 +32,4 @@ tensorboard
 text-unidecode
 wget
 numexpr<2.14.0
+fiddle
