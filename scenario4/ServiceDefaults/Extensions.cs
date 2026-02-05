@@ -29,7 +29,14 @@ namespace Microsoft.Extensions.Hosting
             builder.Services.ConfigureHttpClientDefaults(http =>
             {
                 // Turn on resilience by default
-                http.AddStandardResilienceHandler();
+                // http.AddStandardResilienceHandler();
+                // Turn on resilience by default with extended timeouts for transcribe model requests                
+                http.AddStandardResilienceHandler(options =>
+                {
+                    options.AttemptTimeout.Timeout = TimeSpan.FromMinutes(5);
+                    options.TotalRequestTimeout.Timeout = TimeSpan.FromMinutes(5);
+                    options.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
+                });
 
                 // Turn on service discovery by default
                 http.AddServiceDiscovery();
