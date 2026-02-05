@@ -4,23 +4,44 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 
 **NEW**: Now with .NET Aspire orchestration using Docker containers for simplified development and deployment!
 
+## ✨ New Features
+
+### Dual Model Support
+Choose between two ASR models based on your needs:
+
+| Model | Languages | Timestamps | License | Best For |
+|-------|-----------|------------|---------|----------|
+| **Parakeet** (nvidia/parakeet-tdt-0.6b-v2) | English only | ✅ Yes | CC-BY-4.0 (Commercial) | English transcription with precise timestamps |
+| **Canary-1B** (nvidia/canary-1b) | Multilingual (en, es, de, fr) | ❌ No | CC-BY-NC-4.0 (Non-commercial) | Spanish, German, French, or multilingual content |
+
+### Configuration Options
+- **Model Selection**: Choose Parakeet or Canary-1B via API, web UI, or CLI
+- **Language Selection**: For Canary model, specify target language (en, es, de, fr)
+- **Timestamp Control**: Enable or disable timestamp generation (Parakeet only)
+- **Async Job Management**: Queue jobs and poll for results
+
 ## 🎙️ Using the Transcription Feature
 
-The Blazor web app includes a complete file upload interface:
+The Blazor web app includes a complete file upload interface with model/language selection:
 
 1. Start Aspire (from repository root): `cd scenario4/AppHost && dotnet run`
 2. Open the webapp from the Aspire dashboard
 3. Navigate to the **Transcribe** page (menu or button on home page)
-4. Upload audio files via:
+4. Select your preferred model and language
+   - **Parakeet**: English with timestamps
+   - **Canary-1B**: Multilingual (choose en, es, de, fr)
+5. Upload audio files via:
    - Drag and drop into the upload zone
    - Click to browse and select files
-5. Supported formats: WAV, MP3, FLAC (up to 50MB)
+6. Supported formats: WAV, MP3, FLAC (up to 50MB)
 
 The transcription interface provides:
+- Model and language selection dropdowns
+- Timestamp generation toggle (Parakeet only)
 - Real-time processing feedback
 - Full transcription text
-- Timestamp segments
-- Metadata (filename, processing time)
+- Timestamp segments (when available)
+- Metadata (filename, model used, processing time)
 
 **Note**: The webapp now uses **async job mode** with status polling for better handling of long-running transcriptions. You can also cancel jobs in progress.
 
@@ -41,10 +62,20 @@ The server now supports **asynchronous job management** for better handling of l
 - `POST /jobs/{job_id}/cancel` - Cancel a job
 
 ### Client Support
-- **Blazor Web App**: Automatically uses async mode with real-time progress updates
-- **Console Client**: Use `--async` flag for async mode
+- **Blazor Web App**: Automatically uses async mode with real-time progress updates. Includes UI for model/language selection.
+- **Console Client**: Use `--async` flag for async mode, plus new model/language options:
   ```bash
+  # Basic usage (default: Parakeet, English)
   TranscriptionClient audio.mp3 --async
+  
+  # Use Canary model with Spanish
+  TranscriptionClient audio.mp3 --model canary --language es --async
+  
+  # Use Canary with German, sync mode
+  TranscriptionClient audio.flac --model canary -l de
+  
+  # Disable timestamps (Parakeet only supports timestamps)
+  TranscriptionClient audio.wav --no-timestamps
   ```
 
 ### Benefits
