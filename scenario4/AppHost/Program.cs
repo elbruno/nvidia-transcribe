@@ -12,7 +12,8 @@ var apiServer = builder.AddDockerfile("apiserver", "../server")
     .WithEnvironment("PYTHONUNBUFFERED", "1")  // For real-time logging
     .WithEnvironment("HF_HOME", "/root/.cache/huggingface")  // Hugging Face cache location
     .WithVolume("hf-model-cache", "/root/.cache/huggingface")  // Persist model downloads
-    .WithContainerRuntimeArgs("--gpus=all");  // Enable GPU passthrough (requires NVIDIA Container Toolkit)
+    .WithContainerRuntimeArgs("--gpus=all")  // Enable GPU passthrough (requires NVIDIA Container Toolkit)
+    .WithLifetime(ContainerLifetime.Persistent);
 
 // Add server-side Blazor web client with Aspire service defaults
 var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
