@@ -99,6 +99,29 @@ Access it at `http://localhost:15888` (URL shown in console output)
 4. **Unified Monitoring**: Dashboard shows logs, metrics, and traces
 5. **Development Productivity**: Fast iterative development with live reload
 6. **Production Ready**: Generate deployment manifests for cloud deployment
+7. **Persistent Model Cache**: Model downloads only once, cached in Docker volume
+
+## Model Caching
+
+The ASR model (~1.2GB) is downloaded from Hugging Face on first startup. Aspire configures a persistent Docker volume (`hf-model-cache`) to cache the model:
+
+- **First run**: ~5-10 minutes (downloads model from Hugging Face)
+- **Subsequent runs**: ~30-60 seconds (loads cached model)
+
+### Managing the Cache
+
+```powershell
+# List Docker volumes
+docker volume ls
+
+# View cache size
+docker system df -v | findstr hf-model-cache
+
+# Remove cache to force re-download (if corrupted or to update model)
+docker volume rm hf-model-cache
+```
+
+The cache persists across container restarts and Aspire sessions.
 
 ## Configuration
 

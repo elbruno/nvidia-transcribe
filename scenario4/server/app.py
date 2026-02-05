@@ -10,6 +10,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Enable Hugging Face download progress in logs
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"  # Use standard download with progress
+os.environ["TQDM_DISABLE"] = "0"  # Ensure tqdm progress bars are enabled
+
+import logging
+# Configure logging to show Hugging Face download progress
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+hf_logger = logging.getLogger("huggingface_hub")
+hf_logger.setLevel(logging.INFO)
+
 import librosa
 import nemo.collections.asr as nemo_asr
 import soundfile as sf
@@ -18,6 +28,11 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from huggingface_hub import logging as hf_logging
+
+# Enable huggingface_hub progress logging
+hf_logging.set_verbosity_info()
+hf_logging.enable_progress_bars()
 
 # Constants
 MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"
@@ -95,20 +110,27 @@ async def load_model():
     """Load the ASR model on server startup."""
     global asr_model
     try:
-        print(f"Loading model: {MODEL_NAME}")
+        print(f"=" * 60, flush=True)
+        print(f"Starting model download: {MODEL_NAME}", flush=True)
+        print(f"This may take several minutes on first run (~1.2GB download)", flush=True)
+        print(f"=" * 60, flush=True)
+        
         # Model automatically uses GPU if available, falls back to CPU
         # PyTorch/NeMo will detect CUDA and use GPU without explicit configuration
         asr_model = nemo_asr.models.ASRModel.from_pretrained(MODEL_NAME)
         
         # Check if GPU is being used
         device = next(asr_model.parameters()).device
-        print(f"Model loaded successfully on device: {device}")
+        print(f"=" * 60, flush=True)
+        print(f"Model loaded successfully on device: {device}", flush=True)
         if torch.cuda.is_available():
-            print(f"GPU: {torch.cuda.get_device_name(0)}")
+            print(f"GPU: {torch.cuda.get_device_name(0)}", flush=True)
         else:
-            print("Running on CPU (GPU not available)")
+            print("Running on CPU (GPU not available)", flush=True)
+        print(f"Server is ready to accept requests!", flush=True)
+        print(f"=" * 60, flush=True)
     except Exception as e:
-        print(f"Error loading model: {e}")
+        print(f"Error loading model: {e}", flush=True)
         raise
 
 

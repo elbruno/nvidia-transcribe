@@ -55,10 +55,27 @@ This launches:
 - Unified development experience
 - Automatic service discovery
 - Integrated monitoring
+- **Persistent model cache** - downloads only on first run
 
 **Note**: The console client is available as a standalone application and is not part of the Aspire orchestration.
 
 See [AppHost/README.md](AppHost/README.md) for detailed Aspire instructions.
+
+#### Model Caching
+
+The Parakeet model (~1.2GB) is downloaded from Hugging Face on first startup. Aspire uses a persistent Docker volume (`hf-model-cache`) to cache the model, so subsequent runs start much faster.
+
+- **First run**: ~5-10 minutes (model download + loading)
+- **Subsequent runs**: ~30-60 seconds (model loading only)
+
+To manage the cache:
+```powershell
+# List volumes
+docker volume ls
+
+# Remove cache to force re-download (if needed)
+docker volume rm hf-model-cache
+```
 
 ### Option 2: Docker (Recommended for Production)
 
@@ -257,6 +274,7 @@ Then navigate to the Aspire dashboard to access the web client.
 - Maximum audio file length: 24 minutes (model limitation)
 - English language only (Parakeet model)
 - Requires significant memory for model loading (~2GB)
+- First startup is slow (~5-10 min) due to model download; subsequent runs use cached model
 
 ## Troubleshooting
 
@@ -280,6 +298,12 @@ Then navigate to the Aspire dashboard to access the web client.
 - Check audio file format (WAV, MP3, or FLAC)
 - Verify file is not corrupted
 - Check server logs for detailed error messages
+
+### First startup is very slow
+- This is expected - the Parakeet model (~1.2GB) is being downloaded from Hugging Face
+- Wait for "Server is ready to accept requests!" in the logs
+- Subsequent runs will be much faster due to model caching
+- If using Aspire, model is cached in `hf-model-cache` Docker volume
 
 ## License
 
