@@ -1,6 +1,7 @@
 @page "/transcribe"
 @inject TranscriptionApiService ApiService
 @inject ILogger<Transcribe> Logger
+@rendermode InteractiveServer
 
 <PageTitle>Transcribe Audio</PageTitle>
 
@@ -11,24 +12,20 @@
     <div class="section section-file">
         <h2>📁 Select Audio File</h2>
         <div class="file-selection-content">
-            <div class="file-drop-zone @(isDragOver ? "drag-over" : "")"
-                 @ondragenter="HandleDragEnter"
-                 @ondragleave="HandleDragLeave"
-                 @ondragover:preventDefault
-                 @ondrop="HandleDrop">
+            <div class="file-drop-zone">
                 <InputFile id="file-input" 
                            OnChange="HandleFileSelected" 
                            accept=".wav,.mp3,.flac"
-                           style="display: none;" />
-                <label for="file-input" class="file-select-label">
+                           class="file-input-overlay" />
+                <div class="file-select-label">
                     <span class="upload-icon">📁</span>
                     <span class="upload-text">Click to select a file or drag and drop here</span>
                     <span class="supported-formats">Supported: WAV, MP3, FLAC (max 50MB)</span>
-                </label>
+                </div>
             </div>
             
-            @if (!string.IsNullOrEmpty(selectedFileName))
-            {
+@*             @if (!string.IsNullOrEmpty(selectedFileName))
+            { *@
                 <div class="selected-file-info">
                     <div class="file-icon">🎵</div>
                     <div class="file-details">
@@ -37,7 +34,7 @@
                     </div>
                     <button class="btn-clear" @onclick="ClearFile" title="Clear file">✕</button>
                 </div>
-            }
+            @* } *@
         </div>
     </div>
 
@@ -85,7 +82,6 @@
     private string selectedFileName = string.Empty;
     private long selectedFileSize = 0;
     private bool isProcessing = false;
-    private bool isDragOver = false;
     private string transcriptionText = string.Empty;
     private List<LogEntry> progressLogs = new();
     private ElementReference logElement;
@@ -95,27 +91,11 @@
         AddLog("System ready. Select an audio file to begin.", "info");
     }
 
-    private void HandleDragEnter()
-    {
-        isDragOver = true;
-    }
-
-    private void HandleDragLeave()
-    {
-        isDragOver = false;
-    }
-
-    private async Task HandleDrop(DragEventArgs e)
-    {
-        isDragOver = false;
-    }
-
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
         selectedFileName = e.File.Name;
         selectedFileSize = e.File.Size;
-        isDragOver = false;
         
         AddLog($"File selected: {e.File.Name} ({FormatFileSize(e.File.Size)})", "success");
         StateHasChanged();
@@ -259,6 +239,17 @@
         transition: all 0.3s ease;
         cursor: pointer;
         background: #fafafa;
+        position: relative;
+    }
+
+    .file-input-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
     }
 
     .file-drop-zone:hover,
