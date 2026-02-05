@@ -6,6 +6,7 @@ Provides REST API endpoints for audio transcription using the Parakeet model.
 import os
 import shutil
 import tempfile
+import traceback
 import uuid
 import asyncio
 from datetime import datetime
@@ -184,6 +185,14 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         print(f"[Job {job_id}] Transcribing: {filename}")
         output = asr_model.transcribe([str(process_path)], timestamps=True)
         
+        # Debug: Log output structure
+        print(f"[Job {job_id}] Transcription output type: {type(output)}")
+        if output:
+            print(f"[Job {job_id}] Output length: {len(output)}")
+            if len(output) > 0:
+                print(f"[Job {job_id}] Output[0] type: {type(output[0])}")
+                print(f"[Job {job_id}] Output[0] attributes: {dir(output[0])}")
+        
         # Check if cancelled after transcription completes
         async with jobs_lock:
             if jobs[job_id].status == JobStatus.CANCELLED:
@@ -193,19 +202,43 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
                     cleanup_file(temp_wav)
                 return
         
-        # Extract text and segments
-        text = output[0].text
+        # Extract text and segments with defensive handling
+        if not output or len(output) == 0:
+            raise Exception("Transcription returned empty output")
+        
+        result_item = output[0]
+        
+        # Handle different output formats (string vs Hypothesis object)
+        if isinstance(result_item, str):
+            text = result_item
+            segments = []
+            print(f"[Job {job_id}] Output is string: {text[:100]}...")
+        elif hasattr(result_item, 'text'):
+            text = result_item.text
+            print(f"[Job {job_id}] Extracted text: {text[:100] if text else 'empty'}...")
+        else:
+            raise Exception(f"Unexpected output format: {type(result_item)}")
+        
         segments = []
         
-        if hasattr(output[0], 'timestamp') and output[0].timestamp:
-            timestamp_data = output[0].timestamp
+        if hasattr(result_item, 'timestamp') and result_item.timestamp:
+            timestamp_data = result_item.timestamp
             if isinstance(timestamp_data, dict) and 'segment' in timestamp_data:
                 for seg in timestamp_data['segment']:
-                    segments.append({
-                        'start': seg[0],
-                        'end': seg[1],
-                        'text': seg[2] if len(seg) > 2 else ''
-                    })
+                    # Handle both dict format {'start': ..., 'end': ..., 'text': ...}
+                    # and list/tuple format [start, end, text]
+                    if isinstance(seg, dict):
+                        segments.append({
+                            'start': seg.get('start', 0),
+                            'end': seg.get('end', 0),
+                            'text': seg.get('text', '')
+                        })
+                    else:
+                        segments.append({
+                            'start': seg[0],
+                            'end': seg[1],
+                            'text': seg[2] if len(seg) > 2 else ''
+                        })
         
         # Store result
         result = TranscriptionResponse(
@@ -223,11 +256,14 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         print(f"[Job {job_id}] Completed successfully")
         
     except Exception as e:
-        print(f"[Job {job_id}] Failed: {str(e)}")
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"[Job {job_id}] Failed: {error_msg}")
+        print(f"[Job {job_id}] Full traceback:")
+        traceback.print_exc()
         async with jobs_lock:
             jobs[job_id].status = JobStatus.FAILED
             jobs[job_id].completed_at = datetime.now().isoformat()
-            jobs[job_id].error = str(e)
+            jobs[job_id].error = error_msg
     
     finally:
         # Cleanup temporary files
