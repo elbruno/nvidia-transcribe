@@ -19,3 +19,16 @@ huggingface-hub
 onnx>=1.7.0
 numpy>=1.22
 tqdm>=4.41.0
+python-dateutil>=2.8.0
+sentencepiece>=0.1.96
+transformers>=4.0.0
+editdistance>=0.5.3
+pandas>=1.0.0
+scipy>=1.0.0
+braceexpand>=0.1.0
+lhotse>=1.0.0
+ruamel.yaml
+tensorboard
+text-unidecode
+wget
+numexpr<2.14.0

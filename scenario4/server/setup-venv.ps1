@@ -96,7 +96,12 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "Installing NeMo toolkit (this may take a few minutes)..." -ForegroundColor Yellow
 pip install nemo_toolkit[asr] --no-deps
-pip install hydra-core omegaconf pytorch-lightning webdataset huggingface-hub onnx tqdm
+
+# Install all NeMo dependencies that are missing due to --no-deps
+Write-Host "Installing NeMo dependencies..." -ForegroundColor Yellow
+pip install hydra-core omegaconf lightning pytorch-lightning webdataset huggingface-hub onnx tqdm
+pip install wrapt python-dateutil sentencepiece transformers editdistance pandas scipy braceexpand lhotse
+pip install ruamel.yaml tensorboard text-unidecode wget "numexpr<2.14.0"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "WARNING: NeMo toolkit installation had issues" -ForegroundColor Yellow
