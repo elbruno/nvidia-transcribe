@@ -28,11 +28,14 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from huggingface_hub import logging as hf_logging
-
-# Enable huggingface_hub progress logging
-hf_logging.set_verbosity_info()
-hf_logging.enable_progress_bars()
+# Enable huggingface_hub progress logging (if available)
+try:
+    from huggingface_hub import logging as hf_logging
+    hf_logging.set_verbosity_info()
+    if hasattr(hf_logging, 'enable_progress_bars'):
+        hf_logging.enable_progress_bars()
+except (ImportError, AttributeError):
+    pass  # Older versions may not have these functions
 
 # Constants
 MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"
