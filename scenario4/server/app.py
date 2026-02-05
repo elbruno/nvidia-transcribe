@@ -177,7 +177,7 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
             temp_wav = convert_to_wav(audio_path)
             if temp_wav is None:
                 raise Exception("Audio conversion failed")
-                process_path = temp_wav
+            process_path = temp_wav
         else:
             process_path = audio_path
         
@@ -185,7 +185,6 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         async with jobs_lock:
             if jobs[job_id].status == JobStatus.CANCELLED:
                 print(f"[Job {job_id}] Cancelled during preprocessing")
-                telemetry_tracker.log_transcription_event("transcription_job_cancelled_preprocessing", {"job_id": job_id})
                 cleanup_file(audio_path)
                 if temp_wav:
                     cleanup_file(temp_wav)
@@ -209,7 +208,6 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         async with jobs_lock:
             if jobs[job_id].status == JobStatus.CANCELLED:
                 print(f"[Job {job_id}] Cancelled after transcription")
-                telemetry_tracker.log_transcription_event("transcription_job_cancelled_post", {"job_id": job_id})
                 cleanup_file(audio_path)
                 if temp_wav:
                     cleanup_file(temp_wav)
@@ -311,8 +309,6 @@ async def load_model():
         print(f"Starting model download: {MODEL_NAME}", flush=True)
         print(f"This may take several minutes on first run (~1.2GB download)", flush=True)
         print(f"=" * 60, flush=True)
-        
-        telemetry_tracker.log_transcription_event("model_loading_started", {"model": MODEL_NAME})
         
         model_load_start = time.time()
         # Model automatically uses GPU if available, falls back to CPU
@@ -584,11 +580,20 @@ async def transcribe_audio(
             timestamp_data = output[0].timestamp
             if isinstance(timestamp_data, dict) and 'segment' in timestamp_data:
                 for seg in timestamp_data['segment']:
-                    segments.append({
-                        'start': seg[0],
-                        'end': seg[1],
-                        'text': seg[2] if len(seg) > 2 else ''
-                    })
+                    # Handle both dict format {'start': ..., 'end': ..., 'text': ...}
+                    # and list/tuple format [start, end, text]
+                    if isinstance(seg, dict):
+                        segments.append({
+                            'start': seg.get('start', 0),
+                            'end': seg.get('end', 0),
+                            'text': seg.get('text', '')
+                        })
+                    else:
+                        segments.append({
+                            'start': seg[0],
+                            'end': seg[1],
+                            'text': seg[2] if len(seg) > 2 else ''
+                        })
         
         # Schedule cleanup
         background_tasks.add_task(cleanup_file, temp_upload_path)
