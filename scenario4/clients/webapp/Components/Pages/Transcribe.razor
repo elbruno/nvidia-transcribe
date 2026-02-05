@@ -94,7 +94,6 @@
     private List<LogEntry> progressLogs = new();
     private ElementReference logElement;
     private string? currentJobId;
-    private System.Threading.Timer? pollingTimer;
 
     protected override void OnInitialized()
     {
@@ -103,7 +102,7 @@
 
     public void Dispose()
     {
-        pollingTimer?.Dispose();
+        // Cleanup if needed
     }
 
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -123,8 +122,6 @@
         selectedFileSize = 0;
         transcriptionText = string.Empty;
         currentJobId = null;
-        pollingTimer?.Dispose();
-        pollingTimer = null;
         AddLog("File cleared", "info");
         StateHasChanged();
     }

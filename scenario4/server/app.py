@@ -63,8 +63,9 @@ app.add_middleware(
 # Global model instance (loaded on startup)
 asr_model = None
 
-# Job management storage
+# Job management storage (thread-safe with lock)
 jobs: Dict[str, 'JobInfo'] = {}
+jobs_lock = asyncio.Lock()
 
 
 class JobStatus(str, Enum):
@@ -145,12 +146,20 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
     """
     Process a transcription job in the background.
     Updates job status and stores results.
+    Checks for cancellation before starting transcription.
     """
     temp_wav = None
     
     try:
-        # Update status to processing
-        jobs[job_id].status = JobStatus.PROCESSING
+        # Check if job was cancelled before starting
+        async with jobs_lock:
+            if jobs[job_id].status == JobStatus.CANCELLED:
+                print(f"[Job {job_id}] Cancelled before processing started")
+                cleanup_file(audio_path)
+                return
+            
+            # Update status to processing
+            jobs[job_id].status = JobStatus.PROCESSING
         
         # Convert to WAV if needed
         file_ext = audio_path.suffix.lower()
@@ -162,9 +171,27 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         else:
             process_path = audio_path
         
+        # Check cancellation again before transcription
+        async with jobs_lock:
+            if jobs[job_id].status == JobStatus.CANCELLED:
+                print(f"[Job {job_id}] Cancelled during preprocessing")
+                cleanup_file(audio_path)
+                if temp_wav:
+                    cleanup_file(temp_wav)
+                return
+        
         # Transcribe
         print(f"[Job {job_id}] Transcribing: {filename}")
         output = asr_model.transcribe([str(process_path)], timestamps=True)
+        
+        # Check if cancelled after transcription completes
+        async with jobs_lock:
+            if jobs[job_id].status == JobStatus.CANCELLED:
+                print(f"[Job {job_id}] Cancelled after transcription")
+                cleanup_file(audio_path)
+                if temp_wav:
+                    cleanup_file(temp_wav)
+                return
         
         # Extract text and segments
         text = output[0].text
@@ -188,17 +215,19 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
             timestamp=datetime.now().isoformat()
         )
         
-        jobs[job_id].status = JobStatus.COMPLETED
-        jobs[job_id].completed_at = datetime.now().isoformat()
-        jobs[job_id].result = result
+        async with jobs_lock:
+            jobs[job_id].status = JobStatus.COMPLETED
+            jobs[job_id].completed_at = datetime.now().isoformat()
+            jobs[job_id].result = result
         
         print(f"[Job {job_id}] Completed successfully")
         
     except Exception as e:
         print(f"[Job {job_id}] Failed: {str(e)}")
-        jobs[job_id].status = JobStatus.FAILED
-        jobs[job_id].completed_at = datetime.now().isoformat()
-        jobs[job_id].error = str(e)
+        async with jobs_lock:
+            jobs[job_id].status = JobStatus.FAILED
+            jobs[job_id].completed_at = datetime.now().isoformat()
+            jobs[job_id].error = str(e)
     
     finally:
         # Cleanup temporary files
@@ -306,7 +335,9 @@ async def transcribe_audio_async(
             filename=file.filename,
             created_at=datetime.now().isoformat()
         )
-        jobs[job_id] = job_info
+        
+        async with jobs_lock:
+            jobs[job_id] = job_info
         
         # Start background processing
         background_tasks.add_task(
@@ -339,10 +370,12 @@ async def get_job_status(job_id: str):
     Returns:
         JobInfo with current status and details
     """
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    return jobs[job_id]
+    async with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        # Return a copy to avoid race conditions
+        return jobs[job_id].model_copy()
 
 
 @app.get("/jobs/{job_id}/result", response_model=TranscriptionResponse)
@@ -356,24 +389,25 @@ async def get_job_result(job_id: str):
     Returns:
         TranscriptionResponse with transcription text and timestamps
     """
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    job = jobs[job_id]
-    
-    if job.status == JobStatus.PENDING or job.status == JobStatus.PROCESSING:
-        raise HTTPException(status_code=400, detail="Job not yet completed")
-    
-    if job.status == JobStatus.FAILED:
-        raise HTTPException(status_code=500, detail=f"Job failed: {job.error}")
-    
-    if job.status == JobStatus.CANCELLED:
-        raise HTTPException(status_code=400, detail="Job was cancelled")
-    
-    if job.result is None:
-        raise HTTPException(status_code=500, detail="Job completed but result not available")
-    
-    return job.result
+    async with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        job = jobs[job_id]
+        
+        if job.status == JobStatus.PENDING or job.status == JobStatus.PROCESSING:
+            raise HTTPException(status_code=400, detail="Job not yet completed")
+        
+        if job.status == JobStatus.FAILED:
+            raise HTTPException(status_code=500, detail=f"Job failed: {job.error}")
+        
+        if job.status == JobStatus.CANCELLED:
+            raise HTTPException(status_code=400, detail="Job was cancelled")
+        
+        if job.result is None:
+            raise HTTPException(status_code=500, detail="Job completed but result not available")
+        
+        return job.result
 
 
 @app.post("/jobs/{job_id}/cancel")
@@ -381,30 +415,34 @@ async def cancel_job(job_id: str):
     """
     Cancel a transcription job.
     
+    Marks the job as cancelled. The background task will check this status
+    and stop processing at the next checkpoint.
+    
     Args:
         job_id: The unique job identifier
     
     Returns:
         Message confirming cancellation
     """
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+    async with jobs_lock:
+        if job_id not in jobs:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        job = jobs[job_id]
+        
+        if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot cancel job with status: {job.status}"
+            )
+        
+        # Mark as cancelled - the background task will check this and stop
+        job.status = JobStatus.CANCELLED
+        job.completed_at = datetime.now().isoformat()
     
-    job = jobs[job_id]
+    print(f"[Job {job_id}] Cancellation requested")
     
-    if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot cancel job with status: {job.status}"
-        )
-    
-    # Mark as cancelled
-    job.status = JobStatus.CANCELLED
-    job.completed_at = datetime.now().isoformat()
-    
-    print(f"[Job {job_id}] Cancelled")
-    
-    return {"message": f"Job {job_id} cancelled", "status": job.status}
+    return {"message": f"Job {job_id} cancellation requested", "status": JobStatus.CANCELLED}
 
 
 @app.post("/transcribe", response_model=TranscriptionResponse)
