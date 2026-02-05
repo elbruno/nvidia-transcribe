@@ -4,6 +4,36 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 
 **NEW**: Now with .NET Aspire orchestration using Docker containers for simplified development and deployment!
 
+## 🎙️ Using the Transcription Feature
+
+The Blazor web app includes a complete file upload interface:
+
+1. Start Aspire: `cd scenario4/AppHost && dotnet run`
+2. Open the webapp from the Aspire dashboard
+3. Navigate to the **Transcribe** page (menu or button on home page)
+4. Upload audio files via:
+   - Drag and drop into the upload zone
+   - Click to browse and select files
+5. Supported formats: WAV, MP3, FLAC (up to 50MB)
+
+The transcription interface provides:
+- Real-time processing feedback
+- Full transcription text
+- Timestamp segments
+- Metadata (filename, processing time)
+
+## ⚡ GPU Configuration
+
+**Important**: By default, GPU acceleration is enabled in the AppHost configuration, but requires NVIDIA Container Toolkit on the host machine.
+
+See **[GPU_SETUP_GUIDE.md](GPU_SETUP_GUIDE.md)** for:
+- Installing NVIDIA Container Toolkit
+- Verifying GPU access
+- Troubleshooting GPU detection issues
+- Understanding CPU fallback behavior
+
+The application works in both GPU and CPU modes - GPU is an optimization, not a requirement.
+
 ## Architecture
 
 ```
