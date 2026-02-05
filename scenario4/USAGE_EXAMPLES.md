@@ -76,21 +76,28 @@ docker run -d -p 8000:8000 --gpus all --name asr-server nvidia-asr-server
 docker logs -f asr-server
 ```
 
-### Step 2: Access Web Interface
+### Step 2: Access via Aspire
 ```bash
-cd scenario4/clients/blazor
+cd scenario4/AppHost
 
-# Update API URL if needed
-# Edit wwwroot/appsettings.json: { "ApiUrl": "http://localhost:8000" }
-
-# Run web app
+# Start Aspire orchestration
 dotnet run
 ```
 
-Open browser to `http://localhost:5000`
-1. Click "Choose File" and select an audio file
-2. Click "Transcribe"
-3. View results in real-time
+This will start:
+1. The Python server (already running in Docker)
+2. The Blazor web client
+3. Aspire dashboard for monitoring
+
+Access the web client via the URL shown in the Aspire dashboard.
+
+### Step 2b: Access Console Client (Standalone)
+```bash
+cd scenario4/clients/console
+
+# Run with audio file
+dotnet run -- ../../test_audio.mp3
+```
 
 ## Example 3: Azure Production Deployment
 
@@ -135,17 +142,19 @@ az containerapp show \
   --query properties.configuration.ingress.fqdn
 ```
 
-### Step 2: Configure and Deploy Web Client
+### Step 2: Use the API
+
+With the server deployed to Azure, you can use either client:
+
+**Console Client (Standalone):**
 ```bash
-cd scenario4/clients/blazor
+cd scenario4/clients/console
+dotnet run -- audio.mp3
+# When prompted, provide the Azure API URL: https://asr-api.azurecontainerapps.io
+```
 
-# Update API URL with your Azure URL
-# Edit wwwroot/appsettings.json:
-{
-  "ApiUrl": "https://asr-api.azurecontainerapps.io"
-}
-
-# Build for production
+**Web Client (via Aspire locally, connecting to Azure server):**
+Configure the API endpoint to point to your Azure Container App URL in the Aspire configuration.
 dotnet publish -c Release -o ./publish
 
 # Deploy to Azure Static Web Apps

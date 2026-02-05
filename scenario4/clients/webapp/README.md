@@ -63,19 +63,20 @@ dotnet run
 
 Configure the API endpoint in `appsettings.json` if not using Aspire.
 
-## Key Differences from Blazor WebAssembly Client
+## Key Differences from Standalone Console Client
 
-| Feature | Blazor WebAssembly (blazor/) | Server-Side Blazor (webapp/) |
-|---------|------------------------------|------------------------------|
-| Rendering | Client-side | Server-side |
-| Service Discovery | Manual URL config | Aspire service discovery |
+| Feature | Console Client | Server-Side Blazor (webapp/) |
+|---------|----------------|------------------------------|
+| Interface | Command-line | Web browser |
+| Orchestration | Standalone (not in Aspire) | Orchestrated by Aspire |
+| Service Discovery | Manual URL | Aspire service discovery |
 | Health Checks | None | Built-in via ServiceDefaults |
 | OpenTelemetry | None | Full observability |
-| Load | Downloaded to browser | Runs on server |
+| Usage | Local files via CLI | File upload via browser |
 
 ## Dependencies
 
 - .NET 10.0
-- NvidiaTranscribe.ServiceDefaults (Aspire shared project)
+- ServiceDefaults (Aspire shared project)
 - Microsoft.Extensions.Http.Resilience (via ServiceDefaults)
 - Microsoft.Extensions.ServiceDiscovery (via ServiceDefaults)
