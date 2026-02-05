@@ -16,6 +16,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.0" />
     <PackageReference Include="Aspire.Hosting.Python" Version="13.1.0" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.1.0" />  
   </ItemGroup>
 
   <ItemGroup>

@@ -2,17 +2,18 @@ using Aspire.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Optional: Get Application Insights connection string from configuration
-var appInsightsConnection = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"] ?? "";
-var hasMonitoring = !string.IsNullOrWhiteSpace(appInsightsConnection);
+// Application Insights for telemetry
+IResourceBuilder<IResourceWithConnectionString>? appInsights;
 
-if (hasMonitoring)
+if (builder.ExecutionContext.IsPublishMode)
 {
-    Console.WriteLine("✅ Application Insights monitoring enabled");
+    // PRODUCTION: Use Azure-provisioned services
+    appInsights = builder.AddAzureApplicationInsights("appInsights");
 }
 else
 {
-    Console.WriteLine("ℹ️  Running without Application Insights (telemetry disabled)");
+    // DEVELOPMENT: Use connection strings from configuration
+    appInsights = builder.AddConnectionString("appinsights", "APPLICATIONINSIGHTS_CONNECTION_STRING");
 }
 
 // Add Python FastAPI server using Docker
@@ -24,15 +25,15 @@ var apiServer = builder.AddDockerfile("apiserver", "../server")
     .WithHttpHealthCheck("/health")
     .WithEnvironment("PYTHONUNBUFFERED", "1")  // For real-time logging
     .WithEnvironment("HF_HOME", "/root/.cache/huggingface")  // Hugging Face cache location
-    .WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", appInsightsConnection)  // App Insights (optional)
+    .WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", appInsights)  // App Insights (optional)
     .WithVolume("hf-model-cache", "/root/.cache/huggingface")  // Persist model downloads
     .WithContainerRuntimeArgs("--gpus=all")  // Enable GPU passthrough (requires NVIDIA Container Toolkit)
     .WithLifetime(ContainerLifetime.Persistent);
 
 // Add server-side Blazor web client with Aspire service defaults
 var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
-    .WithEnvironment("services__apiserver__http__0", apiServer.GetEndpoint("http"))
-    .WithEnvironment("APPLICATIONINSIGHTS_CONNECTION_STRING", appInsightsConnection)  // App Insights (optional)
+    .WithEnvironment("services__apiserver__http__0", apiServer.GetEndpoint("http"))    
+    .WithReference(appInsights) // App Insights (optional)
     .WaitFor(apiServer);
 
 builder.Build().Run();

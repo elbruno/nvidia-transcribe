@@ -7,6 +7,7 @@ WORKDIR /app
 
 # Copy application code
 COPY app.py .
+COPY nvidia_asr_monitor.py .
 
 # Expose port
 EXPOSE 8000
