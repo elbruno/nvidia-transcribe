@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional, Dict
 from enum import Enum
 import time
+import functools
 
 # Enable Hugging Face download progress in logs
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"  # Use standard download with progress
@@ -201,7 +202,23 @@ async def get_or_load_model(model_key: str):
     
     try:
         model_load_start = time.time()
-        asr_models[model_key] = nemo_asr.models.ASRModel.from_pretrained(model_name)
+        
+        # PyTorch 2.6+ defaults weights_only=True in torch.load, which is
+        # incompatible with certain NeMo checkpoints (e.g. Canary-1B).
+        # Temporarily patch torch.load to use weights_only=False for those models.
+        _original_torch_load = torch.load
+        @functools.wraps(torch.load)
+        def _patched_torch_load(*args, **kwargs):
+            if 'weights_only' not in kwargs:
+                kwargs['weights_only'] = False
+            return _original_torch_load(*args, **kwargs)
+        
+        torch.load = _patched_torch_load
+        try:
+            asr_models[model_key] = nemo_asr.models.ASRModel.from_pretrained(model_name)
+        finally:
+            torch.load = _original_torch_load
+        
         model_load_duration = time.time() - model_load_start
         
         # Check device
