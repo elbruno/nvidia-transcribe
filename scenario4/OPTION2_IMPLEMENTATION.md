@@ -51,10 +51,15 @@ For a 5-minute audio file:
 
 ### Solution
 The 5-minute timeout provides adequate buffer for:
-- Long audio files (up to ~15 minutes on CPU, or longer files on GPU)
+- Audio files up to ~3-5 minutes on CPU (or ~20+ minutes on GPU)
 - Model initialization time (if needed)
 - Network latency
 - Retry attempts
+
+**Note**: For longer files on CPU that exceed the 5-minute window, consider:
+- Enabling GPU acceleration (see GPU_SETUP_GUIDE.md)
+- Using shorter audio segments
+- Implementing a job queue for very long files
 
 ## Related Configuration
 
@@ -85,7 +90,7 @@ dotnet build NvidiaTranscribe.slnx --configuration Release
 Build succeeded.
     0 Warning(s)
     0 Error(s)
-Time Elapsed 00:00:29.39
+Time Elapsed: 29.39 seconds
 ```
 
 ## Testing Recommendations
