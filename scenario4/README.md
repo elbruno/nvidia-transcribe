@@ -2,7 +2,7 @@
 
 A complete client-server solution for audio transcription using NVIDIA ASR models. The server runs as a containerized Python FastAPI application using GPU acceleration (with CPU fallback), and clients communicate with it via REST API.
 
-**NEW**: Now with .NET Aspire orchestration support for simplified development and deployment!
+**NEW**: Now with .NET Aspire orchestration using Docker containers for simplified development and deployment!
 
 ## Architecture
 
@@ -15,9 +15,17 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
                                               │  (Parakeet)      │
 ┌─────────────────┐         HTTP/REST        │                  │
 │  Server-Side    │────────────────────────▶│  GPU/CPU         │
-│  Blazor App     │  (with Aspire)           │  Docker Image    │
+│  Blazor App     │  (with Aspire)           │  Docker Container│
 └─────────────────┘                          └──────────────────┘
 ```
+
+## Docker Image
+
+The server uses the official **NVIDIA NeMo container** (`nvcr.io/nvidia/nemo:25.11.01`) as base image:
+- All NeMo ASR dependencies pre-installed and optimized
+- No manual Python environment setup required
+- Tested for performance and convergence
+- See: https://github.com/NVIDIA-NeMo/NeMo
 
 ## Clients
 
@@ -30,24 +38,23 @@ A complete client-server solution for audio transcription using NVIDIA ASR model
 
 ### Option 1: Using .NET Aspire (Recommended for Development)
 
-**IMPORTANT**: Set up the Python 3.12 environment FIRST before running Aspire:
+Aspire automatically builds and runs the Docker container:
 
 ```powershell
-# Step 1: Set up Python environment (only needed once)
-cd scenario4/server
-.\setup-venv.ps1
-
-# Step 2: Start Aspire
-cd ../AppHost
+cd scenario4/AppHost
 dotnet run
 ```
 
 This launches:
 - Aspire dashboard with logs and metrics
-- Python FastAPI server (with GPU acceleration)
+- Python FastAPI server (Docker container with GPU acceleration)
 - Blazor web client
 
-**Benefits**: Unified development experience, automatic service discovery, integrated monitoring.
+**Benefits**: 
+- No Python environment setup required
+- Unified development experience
+- Automatic service discovery
+- Integrated monitoring
 
 **Note**: The console client is available as a standalone application and is not part of the Aspire orchestration.
 
@@ -176,7 +183,7 @@ Update the API URL in clients to point to your Azure Container App URL.
 
 ### Option A: Using .NET Aspire (Recommended)
 
-Aspire provides unified orchestration and monitoring:
+Aspire builds the Docker container automatically and provides unified orchestration and monitoring:
 
 ```bash
 cd scenario4/AppHost
@@ -184,6 +191,8 @@ dotnet run
 ```
 
 Benefits:
+- Docker container built and started automatically
+- No Python environment setup required
 - All services start with one command
 - Automatic service discovery
 - Unified dashboard with logs, metrics, and traces
@@ -191,7 +200,7 @@ Benefits:
 
 See [AppHost/README.md](AppHost/README.md) for detailed instructions.
 
-### Option B: Manual Server Development
+### Option B: Manual Server Development (Local Python)
 
 **Windows:**
 ```powershell

@@ -100,23 +100,18 @@ The server will be available at `http://localhost:8000`
 
 ### .NET Aspire Integration
 
-When running with .NET Aspire AppHost, the virtual environment must be set up **before** running `dotnet run`:
+When running with .NET Aspire AppHost, **no manual setup is required**. Aspire automatically builds and runs the Docker container:
 
-1. **Set up the Python environment first:**
 ```powershell
-cd scenario4\server
-.\setup-venv.ps1
-```
-
-2. **Then run Aspire:**
-```powershell
-cd ..\AppHost
+cd scenario4\AppHost
 dotnet run
 ```
 
-The Aspire host is configured to use the `.venv` virtual environment in the server directory.
+The Aspire host uses `AddDockerfile` to build and run the server container from the Dockerfile in this directory.
 
 ### Docker Deployment
+
+The Dockerfile uses the official **NVIDIA NeMo container** (`nvcr.io/nvidia/nemo:25.11.01`) with all ASR dependencies pre-installed.
 
 1. **Build the container:**
 ```bash
@@ -132,6 +127,8 @@ docker run -p 8000:8000 --gpus all nvidia-asr-server
 ```bash
 docker run -p 8000:8000 nvidia-asr-server
 ```
+
+**Note**: First run may take a while as Docker pulls the large NeMo base image (~15GB).
 
 ## API Documentation
 
