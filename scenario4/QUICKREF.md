@@ -53,20 +53,36 @@ az containerapp create \
 ```bash
 cd scenario4/clients/console
 
-# Run with local server (synchronous mode)
+# Run with local server (synchronous mode, default Parakeet model)
 dotnet run audio.mp3
 
 # Run with async job mode
 dotnet run audio.mp3 --async
 
+# Run with Canary model and Spanish language
+dotnet run audio.mp3 --model canary --language es
+
+# Run with Canary model, German language, async mode
+dotnet run audio.mp3 --model canary -l de --async
+
 # Run with remote server
 dotnet run audio.mp3 http://server:8000
 
-# Run with remote server and async mode
-dotnet run audio.mp3 http://server:8000 --async
+# Run with all options combined
+dotnet run audio.mp3 http://server:8000 --model canary -l fr --async
+
+# Disable timestamps (only affects Parakeet model)
+dotnet run audio.wav --no-timestamps
 
 # Build
 dotnet build
+```
+
+**Console Client Options:**
+- `--async, -a` - Use async job mode with status polling
+- `--model, -m <model>` - Model: 'parakeet' (default) or 'canary'
+- `--language, -l <lang>` - Language: en, es, de, fr (for Canary model)
+- `--no-timestamps` - Disable timestamp generation
 
 ### Server-Side Blazor Web App
 ```bash
@@ -105,17 +121,42 @@ curl http://localhost:8000/health
 
 ### Synchronous Transcription
 ```bash
-# Transcribe (synchronous - waits for completion)
+# Transcribe with default model (Parakeet, English)
 curl -X POST http://localhost:8000/transcribe \
   -F "file=@audio.mp3"
+
+# Transcribe with Canary model, Spanish language
+curl -X POST http://localhost:8000/transcribe \
+  -F "file=@audio.mp3" \
+  -F "model=canary" \
+  -F "language=es"
+
+# Transcribe with Canary model, German, no timestamps
+curl -X POST http://localhost:8000/transcribe \
+  -F "file=@audio.mp3" \
+  -F "model=canary" \
+  -F "language=de" \
+  -F "include_timestamps=false"
 ```
+
+**Parameters:**
+- `file` (required) - Audio file (.wav, .mp3, .flac)
+- `model` (optional) - "parakeet" (default) or "canary"
+- `language` (optional) - "en", "es", "de", "fr" (for Canary model)
+- `include_timestamps` (optional) - "true" (default) or "false"
 
 ### Async Job Management
 ```bash
-# Start async job
+# Start async job with default model
 curl -X POST http://localhost:8000/transcribe/async \
   -F "file=@audio.mp3"
 # Returns: {"job_id": "...", "status": "pending", "message": "..."}
+
+# Start async job with Canary model, French
+curl -X POST http://localhost:8000/transcribe/async \
+  -F "file=@audio.mp3" \
+  -F "model=canary" \
+  -F "language=fr"
 
 # Check job status
 curl http://localhost:8000/jobs/{job_id}/status
@@ -160,14 +201,21 @@ python test_server.py http://server:8000
 
 ### Server
 - Port: 8000 (default)
-- Model: `nvidia/parakeet-tdt-0.6b-v2`
+- Models: 
+  - `nvidia/parakeet-tdt-0.6b-v2` (English, with timestamps)
+  - `nvidia/canary-1b` (Multilingual: en, es, de, fr)
 - Supported formats: WAV, MP3, FLAC
+- Default model: Parakeet (loaded at startup)
+- Canary model: Loaded on-demand when first requested
 
 ### Console Client
 - API URL: Command-line argument (default: `http://localhost:8000`)
+- Model: `--model` flag (default: parakeet)
+- Language: `--language` flag (for Canary model)
 
 ### Web Client
-- API URL: `wwwroot/appsettings.json`
+- API URL: Configured via Aspire service discovery
+- Model/Language: Selected via UI dropdowns
 
 ## Common Issues
 

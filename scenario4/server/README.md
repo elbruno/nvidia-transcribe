@@ -432,8 +432,10 @@ app.add_middleware(
 ### Optimization Tips
 1. Use GPU for production workloads
 2. Keep the model loaded (it persists across requests)
-3. Use proper resource limits in Docker/Kubernetes
-4. Consider request queuing for high traffic
+3. GPU memory is automatically cleaned up after each transcription
+4. Models are loaded in eval mode to reduce memory overhead
+5. Use proper resource limits in Docker/Kubernetes
+6. Consider request queuing for high traffic
 
 ## Troubleshooting
 
@@ -453,6 +455,19 @@ Wait a few seconds after startup for the model to load. Check `/health` endpoint
 ### Slow startup
 First run downloads the model (~1.2GB) from Hugging Face. Subsequent runs use cached model.
 
+## GPU Memory Management
+
+The server automatically manages GPU memory between transcription requests:
+
+- **Post-transcription cleanup**: After each job, the server runs `gc.collect()`, `torch.cuda.empty_cache()`, and `torch.cuda.ipc_collect()` to free intermediate tensors and CUDA caches
+- **Eval mode**: Models are set to `model.eval()` after loading to disable gradient tracking and reduce memory usage
+- **Memory logging**: GPU memory usage is logged before and after cleanup for monitoring
+- **Model persistence**: Models remain loaded in memory across requests — only intermediate computation tensors are freed
+
+## PyTorch Compatibility
+
+The server includes a compatibility patch for **PyTorch 2.9+** where `torch.load` defaults to `weights_only=True`. NeMo model checkpoints require `weights_only=False`, but NeMo itself passes `weights_only=True` explicitly. The server applies an unconditional monkey-patch to override this parameter, ensuring both Parakeet and Canary models load correctly.
+
 ## Security Considerations
 
 ⚠️ **Important for production deployments:**
@@ -466,4 +481,5 @@ First run downloads the model (~1.2GB) from Hugging Face. Subsequent runs use ca
 
 ## License
 
-This server uses the Parakeet model (CC-BY-4.0), which allows commercial use.
+- **Parakeet model** (CC-BY-4.0): Allows commercial use
+- **Canary-1B model** (CC-BY-NC-4.0): Non-commercial use only

@@ -9,6 +9,19 @@ using Microsoft.Extensions.ServiceDiscovery;
 
 namespace TranscriptionClient
 {
+    /// <summary>
+    /// Configuration options parsed from command-line arguments
+    /// </summary>
+    class TranscriptionConfig
+    {
+        public string AudioFilePath { get; set; } = string.Empty;
+        public string? ApiUrl { get; set; }
+        public bool UseAsyncMode { get; set; }
+        public string ModelKey { get; set; } = "parakeet";
+        public string? LanguageCode { get; set; }
+        public bool IncludeTimestamps { get; set; } = true;
+    }
+    
     class Program
     {
         private const string DEFAULT_API_URL = "http://localhost:8000";
@@ -23,30 +36,24 @@ namespace TranscriptionClient
                 return;
             }
 
-            // Check for async mode flag
-            bool useAsyncMode = args.Any(a => a == "--async" || a == "-a");
+            // Parse configuration from arguments
+            var config = ParseArguments(args);
             
-            // Filter out flags from arguments
-            var fileArgs = args.Where(a => !a.StartsWith("-")).ToArray();
-            
-            if (fileArgs.Length < 1)
+            if (string.IsNullOrEmpty(config.AudioFilePath))
             {
                 ShowUsage();
                 return;
             }
 
-            string audioFilePath = fileArgs[0];
-            string? apiUrl = fileArgs.Length > 1 ? fileArgs[1] : null;
-
             // Validate file exists
-            if (!File.Exists(audioFilePath))
+            if (!File.Exists(config.AudioFilePath))
             {
-                Console.WriteLine($"Error: File not found: {audioFilePath}");
+                Console.WriteLine($"Error: File not found: {config.AudioFilePath}");
                 return;
             }
 
             // Validate file extension
-            string extension = Path.GetExtension(audioFilePath).ToLower();
+            string extension = Path.GetExtension(config.AudioFilePath).ToLower();
             if (extension != ".wav" && extension != ".mp3" && extension != ".flac")
             {
                 Console.WriteLine($"Error: Unsupported file format. Supported: .wav, .mp3, .flac");
@@ -55,10 +62,10 @@ namespace TranscriptionClient
 
             // Create HttpClient with optional service discovery support
             HttpClient client;
-            if (apiUrl != null)
+            if (config.ApiUrl != null)
             {
                 // Standalone mode - use provided URL
-                client = new HttpClient { BaseAddress = new Uri(apiUrl) };
+                client = new HttpClient { BaseAddress = new Uri(config.ApiUrl) };
             }
             else
             {
@@ -69,22 +76,32 @@ namespace TranscriptionClient
             try
             {
                 // Check server health
-                var effectiveUrl = apiUrl ?? Environment.GetEnvironmentVariable("services__apiserver__http__0") ?? DEFAULT_API_URL;
+                var effectiveUrl = config.ApiUrl ?? Environment.GetEnvironmentVariable("services__apiserver__http__0") ?? DEFAULT_API_URL;
                 Console.WriteLine($"Checking server at {effectiveUrl}...");
                 await CheckHealth(client);
                 Console.WriteLine("Server is healthy ✓\n");
+                
+                // Display configuration
+                Console.WriteLine($"Configuration:");
+                Console.WriteLine($"  Model: {config.ModelKey}");
+                if (!string.IsNullOrEmpty(config.LanguageCode))
+                {
+                    Console.WriteLine($"  Language: {config.LanguageCode}");
+                }
+                Console.WriteLine($"  Timestamps: {config.IncludeTimestamps}");
+                Console.WriteLine($"  Mode: {(config.UseAsyncMode ? "Async" : "Sync")}\n");
 
-                if (useAsyncMode)
+                if (config.UseAsyncMode)
                 {
                     // Use async job mode
-                    Console.WriteLine($"Starting async transcription job for: {Path.GetFileName(audioFilePath)}");
-                    await TranscribeAsyncMode(client, audioFilePath);
+                    Console.WriteLine($"Starting async transcription job for: {Path.GetFileName(config.AudioFilePath)}");
+                    await TranscribeAsyncMode(client, config);
                 }
                 else
                 {
                     // Use synchronous mode (original behavior)
-                    Console.WriteLine($"Uploading and transcribing: {Path.GetFileName(audioFilePath)}");
-                    var result = await TranscribeAudio(client, audioFilePath);
+                    Console.WriteLine($"Uploading and transcribing: {Path.GetFileName(config.AudioFilePath)}");
+                    var result = await TranscribeAudio(client, config);
                     DisplayResult(result);
                 }
 
@@ -120,19 +137,76 @@ namespace TranscriptionClient
             }
         }
 
+        static TranscriptionConfig ParseArguments(string[] args)
+        {
+            var config = new TranscriptionConfig();
+            var nonFlagArgs = new List<string>();
+            
+            for (int i = 0; i < args.Length; i++)
+            {
+                var arg = args[i];
+                
+                if (arg == "--async" || arg == "-a")
+                {
+                    config.UseAsyncMode = true;
+                }
+                else if (arg == "--model" || arg == "-m")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        config.ModelKey = args[++i];
+                    }
+                }
+                else if (arg == "--language" || arg == "-l")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        config.LanguageCode = args[++i];
+                    }
+                }
+                else if (arg == "--no-timestamps")
+                {
+                    config.IncludeTimestamps = false;
+                }
+                else if (!arg.StartsWith("-"))
+                {
+                    nonFlagArgs.Add(arg);
+                }
+            }
+            
+            // First non-flag arg is the audio file
+            if (nonFlagArgs.Count > 0)
+            {
+                config.AudioFilePath = nonFlagArgs[0];
+            }
+            
+            // Second non-flag arg (if present) is the API URL
+            if (nonFlagArgs.Count > 1)
+            {
+                config.ApiUrl = nonFlagArgs[1];
+            }
+            
+            return config;
+        }
+        
         static void ShowUsage()
         {
-            Console.WriteLine("Usage: TranscriptionClient <audio_file> [api_url] [--async]");
+            Console.WriteLine("Usage: TranscriptionClient <audio_file> [api_url] [options]");
             Console.WriteLine("\nArguments:");
             Console.WriteLine("  audio_file  Path to audio file (.wav, .mp3, or .flac)");
             Console.WriteLine("  api_url     Optional. API server URL (default: http://localhost:8000)");
             Console.WriteLine("              When running via Aspire, service discovery is automatic");
-            Console.WriteLine("  --async, -a Optional. Use async job mode with status polling");
+            Console.WriteLine("\nOptions:");
+            Console.WriteLine("  --async, -a          Use async job mode with status polling");
+            Console.WriteLine("  --model, -m <model>  Model to use: 'parakeet' (default) or 'canary'");
+            Console.WriteLine("  --language, -l <lng> Language for multilingual models: en, es, de, fr");
+            Console.WriteLine("  --no-timestamps      Disable timestamp generation");
             Console.WriteLine("\nExamples:");
             Console.WriteLine("  TranscriptionClient audio.mp3");
             Console.WriteLine("  TranscriptionClient audio.wav --async");
-            Console.WriteLine("  TranscriptionClient audio.wav http://server:8000");
+            Console.WriteLine("  TranscriptionClient audio.wav --model canary --language es");
             Console.WriteLine("  TranscriptionClient audio.mp3 http://server:8000 --async");
+            Console.WriteLine("  TranscriptionClient audio.flac --model canary -l de --async");
         }
 
         static async Task CheckHealth(HttpClient client)
@@ -149,14 +223,26 @@ namespace TranscriptionClient
             }
         }
 
-        static async Task<TranscriptionResponse> TranscribeAudio(HttpClient client, string filePath)
+        static async Task<TranscriptionResponse> TranscribeAudio(HttpClient client, TranscriptionConfig config)
         {
             using var form = new MultipartFormDataContent();
-            using var fileStream = File.OpenRead(filePath);
+            using var fileStream = File.OpenRead(config.AudioFilePath);
             using var fileContent = new StreamContent(fileStream);
 
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
-            form.Add(fileContent, "file", Path.GetFileName(filePath));
+            form.Add(fileContent, "file", Path.GetFileName(config.AudioFilePath));
+            
+            // Add model parameter
+            form.Add(new StringContent(config.ModelKey), "model");
+            
+            // Add language parameter if specified
+            if (!string.IsNullOrEmpty(config.LanguageCode))
+            {
+                form.Add(new StringContent(config.LanguageCode), "language");
+            }
+            
+            // Add timestamps parameter
+            form.Add(new StringContent(config.IncludeTimestamps.ToString().ToLower()), "include_timestamps");
 
             var response = await client.PostAsync("/transcribe", form);
             response.EnsureSuccessStatusCode();
@@ -166,15 +252,27 @@ namespace TranscriptionClient
             return result ?? throw new Exception("Failed to deserialize response");
         }
 
-        static async Task TranscribeAsyncMode(HttpClient client, string filePath)
+        static async Task TranscribeAsyncMode(HttpClient client, TranscriptionConfig config)
         {
             // Start the job
             using var form = new MultipartFormDataContent();
-            using var fileStream = File.OpenRead(filePath);
+            using var fileStream = File.OpenRead(config.AudioFilePath);
             using var fileContent = new StreamContent(fileStream);
 
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
-            form.Add(fileContent, "file", Path.GetFileName(filePath));
+            form.Add(fileContent, "file", Path.GetFileName(config.AudioFilePath));
+            
+            // Add model parameter
+            form.Add(new StringContent(config.ModelKey), "model");
+            
+            // Add language parameter if specified
+            if (!string.IsNullOrEmpty(config.LanguageCode))
+            {
+                form.Add(new StringContent(config.LanguageCode), "language");
+            }
+            
+            // Add timestamps parameter
+            form.Add(new StringContent(config.IncludeTimestamps.ToString().ToLower()), "include_timestamps");
 
             Console.WriteLine("Uploading file...");
             var response = await client.PostAsync("/transcribe/async", form);
@@ -288,6 +386,8 @@ namespace TranscriptionClient
         public Segment[] segments { get; set; } = Array.Empty<Segment>();
         public string filename { get; set; } = "";
         public string timestamp { get; set; } = "";
+        public string model { get; set; } = "";
+        public string? language { get; set; }
     }
 
     class Segment

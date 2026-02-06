@@ -11,6 +11,7 @@
     <EnableAspireWorkloadDeprecationWarning>false</EnableAspireWorkloadDeprecationWarning>
 	  <!-- Display name shown in Aspire dashboard (top-left) -->
 	  <AssemblyTitle>NVidia Transcriber</AssemblyTitle>
+	  <UserSecretsId>110b1763-9918-4281-bcd7-69b213799e5f</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

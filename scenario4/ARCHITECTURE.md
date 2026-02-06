@@ -36,6 +36,8 @@
 │           │  • GET  /                │                         │
 │           │  • GET  /health          │                         │
 │           │  • POST /transcribe      │                         │
+│           │  • POST /transcribe/async│                         │
+│           │  • GET  /jobs/{id}/status│                         │
 │           │                          │                         │
 │           │  Features:               │                         │
 │           │  • CORS enabled          │                         │
@@ -44,17 +46,21 @@
 │           │  • Background cleanup    │                         │
 │           │  • GPU acceleration      │                         │
 │           │  • CPU fallback          │                         │
+│           │  • GPU memory management │                         │
 │           └──────────┬───────────────┘                         │
 │                      │                                         │
 │                      ▼                                         │
 │           ┌──────────────────────────┐                         │
-│           │  NVIDIA Parakeet Model   │                         │
-│           │  (ASR - English)         │                         │
+│           │  NVIDIA ASR Models       │                         │
 │           │                          │                         │
-│           │  • Text generation       │                         │
-│           │  • Timestamp extraction  │                         │
-│           │  • GPU accelerated       │                         │
-│           │  • CPU fallback          │                         │
+│           │  Parakeet (English)      │                         │
+│           │  • Text + timestamps     │                         │
+│           │  • CC-BY-4.0 license     │                         │
+│           │                          │                         │
+│           │  Canary-1B (Multilingual)│                         │
+│           │  • en, es, de, fr        │                         │
+│           │  • CC-BY-NC-4.0 license  │                         │
+│           │  • Loaded on-demand      │                         │
 │           └──────────────────────────┘                         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -248,8 +254,10 @@ Azure Cloud
 
 ### Server
 - Model loading: ~10 seconds (one-time startup)
+- Canary-1B: Loaded on-demand on first multilingual request (~30-60s)
 - Transcription: ~0.1-0.3x real-time with GPU
-- Memory: ~2GB for model + ~500MB per request
+- Memory: ~2GB for Parakeet + ~2GB for Canary (when loaded)
+- GPU memory cleaned up after each transcription (intermediate tensors freed)
 - Concurrent requests: Limited by GPU memory
 
 ### Clients

@@ -3,6 +3,7 @@ FastAPI server for NVIDIA ASR transcription service.
 Provides REST API endpoints for audio transcription using the Parakeet model.
 """
 
+import gc
 import os
 import shutil
 import tempfile
@@ -14,6 +15,7 @@ from pathlib import Path
 from typing import Optional, Dict
 from enum import Enum
 import time
+import functools
 
 # Enable Hugging Face download progress in logs
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"  # Use standard download with progress
@@ -32,7 +34,7 @@ import librosa
 import nemo.collections.asr as nemo_asr
 import soundfile as sf
 import torch
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -46,9 +48,29 @@ except (ImportError, AttributeError):
     pass  # Older versions may not have these functions
 
 # Constants
-MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"
+PARAKEET_MODEL = "nvidia/parakeet-tdt-0.6b-v2"
+CANARY_MODEL = "nvidia/canary-1b"
 TARGET_SAMPLE_RATE = 16000
 AUDIO_EXTENSIONS = {'.wav', '.mp3', '.flac'}
+
+# Supported models
+SUPPORTED_MODELS = {
+    'parakeet': {
+        'name': PARAKEET_MODEL,
+        'description': 'English-only, supports timestamps',
+        'supports_languages': False,
+        'supports_timestamps': True
+    },
+    'canary': {
+        'name': CANARY_MODEL,
+        'description': 'Multilingual (en, es, de, fr), no timestamps',
+        'supports_languages': True,
+        'supports_timestamps': False
+    }
+}
+
+# Supported languages for Canary model
+SUPPORTED_LANGUAGES = {'en', 'es', 'de', 'fr'}
 
 app = FastAPI(
     title="NVIDIA ASR Transcription API",
@@ -65,8 +87,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global model instance (loaded on startup)
-asr_model = None
+# Global model instances (loaded on demand)
+asr_models = {
+    'parakeet': None,
+    'canary': None
+}
+current_model_name = 'parakeet'  # Default model
 
 # Job management storage (thread-safe with lock)
 jobs: Dict[str, 'JobInfo'] = {}
@@ -106,6 +132,16 @@ class TranscriptionResponse(BaseModel):
     segments: list[dict]
     filename: str
     timestamp: str
+    model: str  # Added: which model was used
+    language: Optional[str] = None  # Added: language used (for multilingual)
+
+
+class TranscriptionRequest(BaseModel):
+    """Request parameters for transcription (used with form data)."""
+    model: str = 'parakeet'  # 'parakeet' or 'canary'
+    language: Optional[str] = None  # For canary: 'en', 'es', 'de', 'fr'
+    include_timestamps: bool = True  # Whether to generate timestamps
+    output_format: str = 'both'  # 'txt', 'srt', or 'both'
 
 
 class HealthResponse(BaseModel):
@@ -147,11 +183,120 @@ def cleanup_file(file_path: Path):
         print(f"Error cleaning up file {file_path}: {e}")
 
 
-async def process_transcription_job(job_id: str, audio_path: Path, filename: str):
+def cleanup_gpu_memory():
+    """
+    Free GPU memory after each transcription job.
+    
+    Clears PyTorch's CUDA memory cache and runs Python garbage collection
+    to release intermediate tensors and activations that are no longer needed.
+    Models remain loaded in GPU memory for reuse.
+    """
+    if not torch.cuda.is_available():
+        return
+    
+    try:
+        before_mb = torch.cuda.memory_allocated() / (1024 * 1024)
+        
+        # Force Python garbage collection to release dangling tensor references
+        gc.collect()
+        
+        # Release cached memory back to the CUDA allocator
+        torch.cuda.empty_cache()
+        
+        # Clean up any inter-process shared memory
+        if hasattr(torch.cuda, 'ipc_collect'):
+            torch.cuda.ipc_collect()
+        
+        after_mb = torch.cuda.memory_allocated() / (1024 * 1024)
+        freed_mb = before_mb - after_mb
+        
+        print(f"GPU memory cleanup: {before_mb:.1f}MB -> {after_mb:.1f}MB (freed {freed_mb:.1f}MB)")
+    except Exception as e:
+        print(f"Warning: GPU memory cleanup failed: {e}")
+
+
+async def get_or_load_model(model_key: str):
+    """
+    Get or load the specified model.
+    Models are loaded on-demand and cached.
+    """
+    global asr_models
+    
+    if model_key not in SUPPORTED_MODELS:
+        raise ValueError(f"Unsupported model: {model_key}. Supported: {list(SUPPORTED_MODELS.keys())}")
+    
+    # Return cached model if available
+    if asr_models[model_key] is not None:
+        return asr_models[model_key]
+    
+    # Load the model
+    model_name = SUPPORTED_MODELS[model_key]['name']
+    print(f"Loading model: {model_name}")
+    
+    try:
+        model_load_start = time.time()
+        
+        # PyTorch 2.6+ defaults weights_only=True in torch.load, which is
+        # incompatible with certain NeMo checkpoints (e.g. Canary-1B).
+        # NeMo's save_restore_connector explicitly passes weights_only=True,
+        # so we must override it unconditionally for affected models.
+        _original_torch_load = torch.load
+        @functools.wraps(torch.load)
+        def _patched_torch_load(*args, **kwargs):
+            kwargs['weights_only'] = False
+            return _original_torch_load(*args, **kwargs)
+        
+        torch.load = _patched_torch_load
+        try:
+            asr_models[model_key] = nemo_asr.models.ASRModel.from_pretrained(model_name)
+        finally:
+            torch.load = _original_torch_load
+        
+        model_load_duration = time.time() - model_load_start
+        
+        # Check device
+        device = next(asr_models[model_key].parameters()).device
+        gpu_available = torch.cuda.is_available()
+        
+        # Set model to eval mode (disables dropout, gradient tracking, etc.)
+        asr_models[model_key].eval()
+        
+        # Clear any transient GPU allocations from model initialization
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        print(f"Model {model_key} loaded on device: {device} ({model_load_duration:.2f}s)")
+        
+        # Record model loading event
+        asr_monitor.record_model_load(
+            model_identifier=model_name,
+            load_seconds=model_load_duration,
+            device_name=str(device),
+            gpu_detected=gpu_available
+        )
+        
+        return asr_models[model_key]
+    except Exception as e:
+        print(f"Error loading model {model_key}: {e}")
+        asr_monitor.record_job_error(f"model_loading_{model_key}", f"Failed to load {model_name}", e)
+        raise
+
+
+async def process_transcription_job(job_id: str, audio_path: Path, filename: str, 
+                                   model_key: str = 'parakeet', language: Optional[str] = None,
+                                   include_timestamps: bool = True):
     """
     Process a transcription job in the background.
     Updates job status and stores results.
     Checks for cancellation before starting transcription.
+    
+    Args:
+        job_id: Unique job identifier
+        audio_path: Path to audio file
+        filename: Original filename
+        model_key: Model to use ('parakeet' or 'canary')
+        language: Language code for multilingual models ('en', 'es', 'de', 'fr')
+        include_timestamps: Whether to generate timestamps
     """
     temp_wav = None
     operation_start_time = time.time()
@@ -191,9 +336,27 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
                 return
         
         # Transcribe
-        print(f"[Job {job_id}] Transcribing: {filename}")
+        print(f"[Job {job_id}] Transcribing: {filename} (model={model_key}, language={language})")
         transcription_start = time.time()
-        output = asr_model.transcribe([str(process_path)], timestamps=True)
+        
+        # Load the appropriate model
+        asr_model = await get_or_load_model(model_key)
+        
+        # Prepare transcription parameters
+        transcribe_kwargs = {}
+        
+        # Add language parameter for Canary model
+        if model_key == 'canary' and language:
+            if language not in SUPPORTED_LANGUAGES:
+                raise ValueError(f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}")
+            transcribe_kwargs['source_lang'] = language
+        
+        # Add timestamps if requested and supported
+        if include_timestamps and SUPPORTED_MODELS[model_key]['supports_timestamps']:
+            transcribe_kwargs['timestamps'] = True
+        
+        # Perform transcription
+        output = asr_model.transcribe([str(process_path)], **transcribe_kwargs)
         transcription_duration_ms = (time.time() - transcription_start) * 1000
         
         # Debug: Log output structure
@@ -256,7 +419,9 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
             text=text,
             segments=segments,
             filename=filename,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            model=model_key,
+            language=language
         )
         
         async with jobs_lock:
@@ -298,49 +463,31 @@ async def process_transcription_job(job_id: str, audio_path: Path, filename: str
         cleanup_file(audio_path)
         if temp_wav:
             cleanup_file(temp_wav)
+        
+        # Free GPU memory (intermediate tensors, caches) after each job
+        cleanup_gpu_memory()
 
 
 @app.on_event("startup")
 async def load_model():
-    """Load the ASR model on server startup."""
-    global asr_model
+    """Load the default ASR model on server startup."""
     try:
         print(f"=" * 60, flush=True)
-        print(f"Starting model download: {MODEL_NAME}", flush=True)
+        print(f"Starting model download: {PARAKEET_MODEL}", flush=True)
         print(f"This may take several minutes on first run (~1.2GB download)", flush=True)
         print(f"=" * 60, flush=True)
         
-        model_load_start = time.time()
-        # Model automatically uses GPU if available, falls back to CPU
-        # PyTorch/NeMo will detect CUDA and use GPU without explicit configuration
-        asr_model = nemo_asr.models.ASRModel.from_pretrained(MODEL_NAME)
-        model_load_duration = time.time() - model_load_start
-        
-        # Check if GPU is being used
-        device = next(asr_model.parameters()).device
-        gpu_available = torch.cuda.is_available()
-        gpu_name = torch.cuda.get_device_name(0) if gpu_available else "N/A"
+        # Load default model (Parakeet)
+        await get_or_load_model('parakeet')
         
         print(f"=" * 60, flush=True)
-        print(f"Model loaded successfully on device: {device}", flush=True)
-        if torch.cuda.is_available():
-            print(f"GPU: {torch.cuda.get_device_name(0)}", flush=True)
-        else:
-            print("Running on CPU (GPU not available)", flush=True)
+        print(f"Default model loaded successfully!", flush=True)
         print(f"Server is ready to accept requests!", flush=True)
+        print(f"Note: Canary model will be loaded on-demand when first requested", flush=True)
         print(f"=" * 60, flush=True)
-        
-        # Record model loading event
-        asr_monitor.record_model_load(
-            model_identifier=MODEL_NAME,
-            load_seconds=model_load_duration,
-            device_name=str(device),
-            gpu_detected=gpu_available
-        )
         
     except Exception as e:
-        print(f"Error loading model: {e}", flush=True)
-        asr_monitor.record_job_error("model_loading", f"Failed to load {MODEL_NAME}", e)
+        print(f"Error loading default model: {e}", flush=True)
         raise
 
 
@@ -349,8 +496,13 @@ async def root():
     """Root endpoint with API information."""
     return {
         "service": "NVIDIA ASR Transcription API",
-        "version": "1.0.0",
-        "model": MODEL_NAME,
+        "version": "2.0.0",
+        "models": {
+            "parakeet": SUPPORTED_MODELS['parakeet'],
+            "canary": SUPPORTED_MODELS['canary']
+        },
+        "default_model": "parakeet",
+        "supported_languages": list(SUPPORTED_LANGUAGES),
         "endpoints": {
             "health": "/health",
             "transcribe": "/transcribe (POST) - Synchronous transcription",
@@ -365,29 +517,55 @@ async def root():
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint."""
+    parakeet_loaded = asr_models['parakeet'] is not None
+    canary_loaded = asr_models['canary'] is not None
+    
+    status = "healthy" if parakeet_loaded else "default_model_not_loaded"
+    model_name = f"parakeet: {parakeet_loaded}, canary: {canary_loaded}"
+    
     return HealthResponse(
-        status="healthy" if asr_model is not None else "model_not_loaded",
-        model_loaded=asr_model is not None,
-        model_name=MODEL_NAME
+        status=status,
+        model_loaded=parakeet_loaded or canary_loaded,
+        model_name=model_name
     )
 
 
 @app.post("/transcribe/async", response_model=JobStartResponse)
 async def transcribe_audio_async(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    model: str = Form('parakeet'),
+    language: Optional[str] = Form(None),
+    include_timestamps: bool = Form(True)
 ):
     """
     Start an asynchronous transcription job.
     
     Args:
         file: Audio file (WAV, MP3, or FLAC)
+        model: Model to use ('parakeet' or 'canary', default: 'parakeet')
+        language: Language code for multilingual models ('en', 'es', 'de', 'fr', default: None)
+        include_timestamps: Whether to generate timestamps (default: True)
     
     Returns:
         JobStartResponse with job_id to track the job
     """
-    if asr_model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+    # Validate model
+    if model not in SUPPORTED_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported model: {model}. Supported: {list(SUPPORTED_MODELS.keys())}"
+        )
+    
+    # Validate language for Canary model
+    if model == 'canary':
+        if language and language not in SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}"
+            )
+        if not language:
+            language = 'en'  # Default to English for Canary
     
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -423,10 +601,13 @@ async def transcribe_audio_async(
             process_transcription_job,
             job_id,
             temp_upload_path,
-            file.filename
+            file.filename,
+            model,
+            language,
+            include_timestamps
         )
         
-        print(f"[Job {job_id}] Started for file: {file.filename}")
+        print(f"[Job {job_id}] Started for file: {file.filename} (model={model}, language={language})")
         
         return JobStartResponse(
             job_id=job_id,
@@ -527,19 +708,39 @@ async def cancel_job(job_id: str):
 @app.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    model: str = Form('parakeet'),
+    language: Optional[str] = Form(None),
+    include_timestamps: bool = Form(True)
 ):
     """
-    Transcribe an audio file.
+    Transcribe an audio file synchronously.
     
     Args:
         file: Audio file (WAV, MP3, or FLAC)
+        model: Model to use ('parakeet' or 'canary', default: 'parakeet')
+        language: Language code for multilingual models ('en', 'es', 'de', 'fr', default: None)
+        include_timestamps: Whether to generate timestamps (default: True)
     
     Returns:
         TranscriptionResponse with text and timestamps
     """
-    if asr_model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+    # Validate model
+    if model not in SUPPORTED_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported model: {model}. Supported: {list(SUPPORTED_MODELS.keys())}"
+        )
+    
+    # Validate language for Canary model
+    if model == 'canary':
+        if language and language not in SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported language: {language}. Supported: {sorted(SUPPORTED_LANGUAGES)}"
+            )
+        if not language:
+            language = 'en'  # Default to English for Canary
     
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
@@ -569,8 +770,24 @@ async def transcribe_audio(
             audio_path = temp_upload_path
         
         # Transcribe
-        print(f"Transcribing: {file.filename}")
-        output = asr_model.transcribe([str(audio_path)], timestamps=True)
+        print(f"Transcribing: {file.filename} (model={model}, language={language})")
+        
+        # Load the appropriate model
+        asr_model = await get_or_load_model(model)
+        
+        # Prepare transcription parameters
+        transcribe_kwargs = {}
+        
+        # Add language parameter for Canary model
+        if model == 'canary' and language:
+            transcribe_kwargs['source_lang'] = language
+        
+        # Add timestamps if requested and supported
+        if include_timestamps and SUPPORTED_MODELS[model]['supports_timestamps']:
+            transcribe_kwargs['timestamps'] = True
+        
+        # Perform transcription
+        output = asr_model.transcribe([str(audio_path)], **transcribe_kwargs)
         
         # Extract text and segments
         text = output[0].text
@@ -595,6 +812,9 @@ async def transcribe_audio(
                             'text': seg[2] if len(seg) > 2 else ''
                         })
         
+        # Free GPU memory after transcription
+        cleanup_gpu_memory()
+        
         # Schedule cleanup
         background_tasks.add_task(cleanup_file, temp_upload_path)
         if temp_wav:
@@ -604,13 +824,16 @@ async def transcribe_audio(
             text=text,
             segments=segments,
             filename=file.filename,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            model=model,
+            language=language
         )
         
     except HTTPException:
         raise
     except Exception as e:
         # Cleanup on error
+        cleanup_gpu_memory()
         if temp_upload:
             cleanup_file(Path(temp_upload.name))
         if temp_wav:
