@@ -278,6 +278,7 @@ Potential areas for future development:
 
 ## References
 
-- NVIDIA Parakeet: https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/parakeet-tdt-0.6b
-- NVIDIA Canary: https://catalog.ngc.nvidia.com/orgs/nvidia/teams/nemo/models/canary-1b
+- NVIDIA Parakeet: https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
+- NVIDIA Canary: https://huggingface.co/nvidia/canary-1b
 - NeMo ASR Documentation: https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/intro.html
+- NeMo GitHub Repository: https://github.com/NVIDIA-NeMo/NeMo
