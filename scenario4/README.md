@@ -92,7 +92,7 @@ For detailed API documentation, see [server/README.md](server/README.md).
 
 **Important**: By default, GPU acceleration is enabled in the AppHost configuration, but requires NVIDIA Container Toolkit on the host machine.
 
-See **[GPU_SETUP_GUIDE.md](GPU_SETUP_GUIDE.md)** for:
+See **[GPU_SETUP_GUIDE.md](docs/GPU_SETUP_GUIDE.md)** for:
 - Installing NVIDIA Container Toolkit
 - Verifying GPU access
 - Troubleshooting GPU detection issues
@@ -403,7 +403,7 @@ Then navigate to the Aspire dashboard to access the web client.
 - This handles long-running transcription operations (especially on CPU)
 - Configuration is in `ServiceDefaults/Extensions.cs`
 - After updating, restart Aspire: `cd AppHost && dotnet run`
-- See [OPTION2_IMPLEMENTATION.md](OPTION2_IMPLEMENTATION.md) for technical details
+- See [OPTION2_IMPLEMENTATION.md](docs/OPTION2_IMPLEMENTATION.md) for technical details
 
 ### First startup is very slow
 - This is expected - the Parakeet model (~1.2GB) is being downloaded from Hugging Face

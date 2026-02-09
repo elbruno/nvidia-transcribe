@@ -39,17 +39,18 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │   ├── clients/
 │   │   ├── console/          # C# console client
 │   │   └── blazor/           # Blazor web app client
-│   ├── README.md
-│   ├── QUICKREF.md
-│   ├── USAGE_EXAMPLES.md
-│   └── AZURE_DEPLOYMENT.md
+│   ├── README.md             # Only doc in scenario root
+│   └── docs/                 # All other scenario docs
+│       ├── QUICKREF.md
+│       ├── USAGE_EXAMPLES.md
+│       └── AZURE_DEPLOYMENT.md
 └── output/                     # Shared output directory
 ```
 
 ### Structure Conventions
 
 - **Root README only**: Main `README.md` stays in repo root; all other docs go in `docs/`
-- **Scenario folders**: Each scenario has its own folder with `transcribe.py`, `README.md`, and any scenario-specific files
+- **Scenario folders**: Each scenario has its own folder with `transcribe.py` and `README.md` at the root; all other documentation goes in a `docs/` subfolder within the scenario
 - **Shared resources**: `requirements.txt`, `fix_lhotse.py`, and `output/` remain in root (shared across scenarios)
 - **Utils folder**: `utils/` contains environment validation scripts (`check_environment.py`, `check_models.py`)
 - **Legacy support**: Root `transcribe.py` maintained for backward compatibility
