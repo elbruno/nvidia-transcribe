@@ -40,6 +40,14 @@ Generate podcast episode titles, descriptions, and tags from any transcript usin
    ```
 3. The NIM container will pull automatically when you run the Aspire AppHost
 
+#### NIM Resources
+
+Official NVIDIA documentation for NIM containers:
+- [NIM Overview](https://docs.nvidia.com/nim/large-language-models/latest/introduction.html) - Introduction to NVIDIA NIM
+- [NIM Getting Started Guide](https://docs.nvidia.com/nim/large-language-models/latest/getting-started.html) - Docker deployment and configuration
+- [NGC Catalog](https://catalog.ngc.nvidia.com/) - Browse available NIM models
+- [Build with NVIDIA](https://build.nvidia.com/) - Sign up and manage API keys
+
 ## 🎙️ Using the Transcription Feature
 
 The Blazor web app includes a complete file upload interface with model/language selection:
