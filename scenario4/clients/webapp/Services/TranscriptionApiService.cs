@@ -82,7 +82,11 @@ public class TranscriptionApiService
     /// <summary>
     /// Starts an asynchronous transcription job.
     /// </summary>
-    public async Task<JobStartResponse> StartTranscriptionJobAsync(IBrowserFile file)
+    public async Task<JobStartResponse> StartTranscriptionJobAsync(
+        IBrowserFile file, 
+        string model = "parakeet", 
+        string? language = null, 
+        bool includeTimestamps = true)
     {
         var client = _httpClientFactory.CreateClient("api");
 
@@ -97,8 +101,21 @@ public class TranscriptionApiService
         var fileContent = new ByteArrayContent(fileBytes);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(GetContentType(file.Name));
         content.Add(fileContent, "file", file.Name);
+        
+        // Add model parameter
+        content.Add(new StringContent(model), "model");
+        
+        // Add language parameter if specified
+        if (!string.IsNullOrEmpty(language))
+        {
+            content.Add(new StringContent(language), "language");
+        }
+        
+        // Add timestamps parameter
+        content.Add(new StringContent(includeTimestamps.ToString().ToLower()), "include_timestamps");
 
-        _logger.LogInformation("Starting async transcription job for: {FileName}", file.Name);
+        _logger.LogInformation("Starting async transcription job for: {FileName} (model={Model}, language={Language})", 
+            file.Name, model, language ?? "default");
 
         var response = await client.PostAsync("/transcribe/async", content);
         
@@ -212,6 +229,8 @@ public class TranscriptionResponse
     public Segment[] Segments { get; set; } = [];
     public string Filename { get; set; } = string.Empty;
     public string Timestamp { get; set; } = string.Empty;
+    public string Model { get; set; } = string.Empty;
+    public string? Language { get; set; }
 }
 
 /// <summary>

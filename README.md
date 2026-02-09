@@ -34,18 +34,24 @@ python scenario3/transcribe.py audio_file.mp3 en  # English
 
 ### Scenario 4: Client-Server Architecture
 **Folder**: [`scenario4/`](scenario4/)  
-**Model**: nvidia/parakeet-tdt-0.6b-v2 (English)  
+**Models**: nvidia/parakeet-tdt-0.6b-v2 (English) and nvidia/canary-1b (Multilingual)  
 **Usage**: REST API server with C# console and Blazor web clients
+
+**New Features**:
+- ✨ **Dual Model Support**: Choose between Parakeet (English with timestamps) or Canary-1B (Multilingual)
+- 🌍 **Multilingual**: Support for English, Spanish, German, and French
+- ⏱️ **Timestamp Control**: Enable/disable timestamp generation
+- 🔄 **Async Jobs**: Job queue with status polling for long transcriptions
 
 ```bash
 # Start server
 cd scenario4/server && uvicorn app:app --host 0.0.0.0 --port 8000
 
-# Use console client
-cd scenario4/clients/console && dotnet run audio.mp3
+# Use console client with model selection
+cd scenario4/clients/console && dotnet run audio.mp3 --model canary --language es
 
-# Use web client
-cd scenario4/clients/blazor && dotnet run
+# Use web client (with interactive model/language selection)
+cd scenario4/clients/webapp && dotnet run
 ```
 
 ## Choosing the Right Scenario
