@@ -22,7 +22,8 @@ builder.Services.AddHttpClient("nim", (sp, httpClient) =>
 {
     var nimEndpoint = builder.Configuration["services__nim-llm__http__0"]
                      ?? "http://localhost:8001";
-    httpClient.BaseAddress = new Uri(nimEndpoint);
+    // Append /v1 so the OpenAI SDK hits /v1/chat/completions
+    httpClient.BaseAddress = new Uri(nimEndpoint.TrimEnd('/') + "/v1");
 });
 
 // Application services

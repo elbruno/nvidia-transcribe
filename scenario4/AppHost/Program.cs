@@ -41,6 +41,7 @@ var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
     .WithHttpEndpoint(port: 8001, targetPort: 8000, name: "http", isProxied: false)
     .WithHttpHealthCheck("/v1/health/ready")
     .WithEnvironment("NGC_API_KEY", builder.Configuration["NGC_API_KEY"] ?? "")
+    .WithEnvironment("NIM_MAX_MODEL_LEN", "8192")  // Limit context length to fit in GPU VRAM
     .WithVolume("nim-model-cache", "/opt/nim/.cache")
     .WithContainerRuntimeArgs("--gpus=all")
     .WithContainerRuntimeArgs("--dns=8.8.8.8")  // Ensure DNS resolution for NGC model downloads

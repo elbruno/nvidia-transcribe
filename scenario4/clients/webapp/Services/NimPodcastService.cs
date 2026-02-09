@@ -25,6 +25,13 @@ public sealed class NimPodcastService
 
     private const string NimModelId = "meta/llama-3.2-3b-instruct";
 
+    /// <summary>
+    /// Maximum transcript length (in characters) sent to the model.
+    /// Keeps the prompt well within the 8192-token context window
+    /// while leaving room for the system prompt and the JSON response.
+    /// </summary>
+    private const int MaxTranscriptChars = 18_000;
+
     private const string LlmRoleInstruction =
         "You are a podcast production assistant. "
         + "Given a transcript, generate a concise episode title, "
@@ -56,7 +63,13 @@ public sealed class NimPodcastService
             // NIM local containers don't validate API keys; the SDK requires a non-empty value
             credential: new System.ClientModel.ApiKeyCredential("not-required"),
             options: new OpenAI.OpenAIClientOptions { Endpoint = nimHttp.BaseAddress });
-
+        // Truncate very long transcripts to stay within the context window
+        if (transcript.Length > MaxTranscriptChars)
+        {
+            _log.LogWarning("Transcript truncated from {Original} to {Max} chars to fit context window",
+                transcript.Length, MaxTranscriptChars);
+            transcript = transcript[..MaxTranscriptChars];
+        }
         _log.LogInformation("Requesting episode metadata from NIM – transcript length: {Len} chars", transcript.Length);
 
         var userPrompt =
@@ -72,7 +85,8 @@ public sealed class NimPodcastService
 
         var completionOpts = new ChatCompletionOptions
         {
-            ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
+            ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat(),
+            MaxOutputTokenCount = 1024
         };
 
         var reply = await chatApi.CompleteChatAsync(conversation, completionOpts, ct);

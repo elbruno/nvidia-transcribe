@@ -444,7 +444,7 @@ namespace TranscriptionClient
                 credential: new System.ClientModel.ApiKeyCredential("not-required"),
                 options: new OpenAI.OpenAIClientOptions
                 {
-                    Endpoint = new Uri(nimEndpoint)
+                    Endpoint = new Uri(nimEndpoint.TrimEnd('/') + "/v1")
                 });
 
             var roleMsg = new OpenAI.Chat.SystemChatMessage(
