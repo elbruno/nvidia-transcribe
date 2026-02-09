@@ -21,7 +21,7 @@ builder.Services.AddHttpClient("api", (_, httpClient) =>
 builder.Services.AddHttpClient("nim", (sp, httpClient) =>
 {
     var nimEndpoint = builder.Configuration["services__nim-llm__http__0"]
-                     ?? "http://nim-llm:8000";
+                     ?? "http://localhost:8001";
     httpClient.BaseAddress = new Uri(nimEndpoint);
 });
 

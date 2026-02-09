@@ -248,7 +248,7 @@ namespace TranscriptionClient
             Console.WriteLine("  --no-timestamps      Disable timestamp generation");
             Console.WriteLine("  --generate-assets    Generate podcast assets after transcription");
             Console.WriteLine("  --transcript-file <f> Use existing transcript file (with --generate-assets)");
-            Console.WriteLine("  --nim-url <url>      NIM LLM endpoint (default: from Aspire env or localhost:8000)");
+            Console.WriteLine("  --nim-url <url>      NIM LLM endpoint (default: from Aspire env or localhost:8001)");
             Console.WriteLine("\nExamples:");
             Console.WriteLine("  TranscriptionClient audio.mp3");
             Console.WriteLine("  TranscriptionClient audio.wav --async");
@@ -432,7 +432,7 @@ namespace TranscriptionClient
             // Resolve the NIM endpoint: explicit flag > Aspire env var > default
             var nimEndpoint = config.NimUrl
                 ?? Environment.GetEnvironmentVariable("services__nim-llm__http__0")
-                ?? "http://localhost:8000";
+                ?? "http://localhost:8001";
 
             Console.WriteLine($"NIM endpoint: {nimEndpoint}");
             Console.WriteLine($"Transcript length: {transcript.Length} characters");

@@ -38,11 +38,12 @@ var nimModelImage = builder.Configuration["NIM_IMAGE"]
     ?? "nvcr.io/nim/meta/llama-3.2-3b-instruct";
 
 var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
-    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "http", isProxied: false)
+    .WithHttpEndpoint(port: 8001, targetPort: 8000, name: "http", isProxied: false)
     .WithHttpHealthCheck("/v1/health/ready")
     .WithEnvironment("NGC_API_KEY", builder.Configuration["NGC_API_KEY"] ?? "")
     .WithVolume("nim-model-cache", "/opt/nim/.cache")
     .WithContainerRuntimeArgs("--gpus=all")
+    .WithContainerRuntimeArgs("--dns=8.8.8.8")  // Ensure DNS resolution for NGC model downloads
     .WithLifetime(ContainerLifetime.Persistent);
 
 // Add server-side Blazor web client with Aspire service defaults.
