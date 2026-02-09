@@ -94,10 +94,9 @@
     {
         // Accept transcript text passed via query-string from the Transcribe page
         var uri = new Uri(Nav.Uri);
-        var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        var incoming = qs["transcript"];
-        if (!string.IsNullOrWhiteSpace(incoming))
-            inputTranscript = incoming;
+        var queryDict = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (queryDict.TryGetValue("transcript", out var incoming) && !string.IsNullOrWhiteSpace(incoming))
+            inputTranscript = incoming.ToString();
     }
 
     private async Task RunGeneration()

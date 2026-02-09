@@ -53,7 +53,8 @@ public sealed class NimPodcastService
 
         var chatApi = new ChatClient(
             model: NimModelId,
-            credential: new System.ClientModel.ApiKeyCredential("nim-local"),
+            // NIM local containers don't validate API keys; the SDK requires a non-empty value
+            credential: new System.ClientModel.ApiKeyCredential("not-required"),
             options: new OpenAI.OpenAIClientOptions { Endpoint = nimHttp.BaseAddress });
 
         _log.LogInformation("Requesting episode metadata from NIM – transcript length: {Len} chars", transcript.Length);

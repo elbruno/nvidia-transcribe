@@ -440,7 +440,8 @@ namespace TranscriptionClient
 
             var chatApi = new OpenAI.Chat.ChatClient(
                 model: "nvidia/llama-3.2-nv-minitron-4b-instruct",
-                credential: new System.ClientModel.ApiKeyCredential("nim-local"),
+                // NIM local containers don't validate API keys; the SDK requires a non-empty value
+                credential: new System.ClientModel.ApiKeyCredential("not-required"),
                 options: new OpenAI.OpenAIClientOptions
                 {
                     Endpoint = new Uri(nimEndpoint)

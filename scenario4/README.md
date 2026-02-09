@@ -20,6 +20,26 @@ Choose between two ASR models based on your needs:
 - **Timestamp Control**: Enable or disable timestamp generation (Parakeet only)
 - **Async Job Management**: Queue jobs and poll for results
 
+### 🎧 Podcast Asset Generation (NIM)
+
+Generate podcast episode titles, descriptions, and tags from any transcript using a local NVIDIA NIM LLM container.
+
+- **Web app**: Dedicated "Podcast Assets" page with paste-a-transcript mode; also accessible via a button on the Transcribe results view
+- **Console client**: `--generate-assets` flag after transcription, or standalone with `--transcript-file <path>`
+- **Architecture**: Clients call the NIM container directly via its OpenAI-compatible `/v1/chat/completions` endpoint
+- **Default model**: `nvidia/llama-3.2-nv-minitron-4b-instruct` (4B params, ~8 GB VRAM – coexists with ASR on a 12 GB GPU)
+- **Configurable**: Override the NIM image via `NIM_IMAGE` config; set `NGC_API_KEY` in user secrets
+
+#### Prerequisites
+
+1. **NGC API Key** – Sign up at [build.nvidia.com](https://build.nvidia.com), generate an API key
+2. **Add to Aspire user secrets**:
+   ```bash
+   cd scenario4/AppHost
+   dotnet user-secrets set "NGC_API_KEY" "<your-key>"
+   ```
+3. The NIM container will pull automatically when you run the Aspire AppHost
+
 ## 🎙️ Using the Transcription Feature
 
 The Blazor web app includes a complete file upload interface with model/language selection:
@@ -107,12 +127,26 @@ The application works in both GPU and CPU modes - GPU is an optimization, not a 
 │  C# Console     │────────────────────────▶│  Python Server   │
 │  Client         │  (Standalone)            │  (FastAPI)       │
 │                 │                          │                  │
-└─────────────────┘                          │  NVIDIA ASR      │
-                                              │  (Parakeet)      │
-┌─────────────────┐         HTTP/REST        │                  │
-│  Server-Side    │────────────────────────▶│  GPU/CPU         │
-│  Blazor App     │  (with Aspire)           │  Docker Container│
-└─────────────────┘                          └──────────────────┘
+└────────┬────────┘                          │  NVIDIA ASR      │
+         │                                   │  (Parakeet)      │
+         │            HTTP/REST              │                  │
+         ├──────────────────────────────────▶│  GPU/CPU         │
+         │                                   │  Docker Container│
+┌────────┴────────┐         HTTP/REST        └──────────────────┘
+│  Server-Side    │────────────────────────▶
+│  Blazor App     │  (with Aspire)
+└────────┬────────┘
+         │
+         │        OpenAI-compat API          ┌──────────────────┐
+         ├──────────────────────────────────▶│  NVIDIA NIM      │
+         │                                   │  LLM Container   │
+         │                                   │  (Minitron 4B)   │
+         │                                   │                  │
+         │                                   │  Podcast Asset   │
+         │                                   │  Generation      │
+         │                                   │  Docker Container│
+         └──────────────────────────────────▶└──────────────────┘
+         (Console also calls NIM directly)
 ```
 
 ## Docker Image
@@ -374,6 +408,7 @@ Then navigate to the Aspire dashboard to access the web client.
 - Requires significant memory for model loading (~2-4GB depending on models loaded)
 - GPU memory is automatically cleaned up after each transcription job
 - First startup is slow (~5-10 min) due to model download; subsequent runs use cached model
+- **NIM LLM VRAM**: The default 4B model needs ~6-8 GB VRAM in addition to ~1.5 GB for ASR; a 12 GB GPU can run both concurrently. Larger models (7B/8B) require 16-24 GB cards.
 
 ## Troubleshooting
 
