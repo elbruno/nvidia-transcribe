@@ -2,6 +2,7 @@
 @inject TranscriptionApiService ApiService
 @inject ILogger<Transcribe> Logger
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -156,6 +157,15 @@
                 <pre class="result-pre">@(string.IsNullOrEmpty(txtContent) ? "No text data available." : txtContent)</pre>
             }
         </div>
+
+        @if (isTranscriptionComplete && !string.IsNullOrWhiteSpace(transcriptionText))
+        {
+            <div style="margin-top: 16px; text-align: right;">
+                <button class="btn-copy" @onclick="NavigateToPodcastAssets" title="Generate podcast metadata from this transcript">
+                    🎧 Generate Podcast Assets
+                </button>
+            </div>
+        }
     </div>
 </div>
 
@@ -496,6 +506,12 @@
     }
 
     // --- Logging ---
+
+    private void NavigateToPodcastAssets()
+    {
+        var encoded = Uri.EscapeDataString(transcriptionText);
+        Navigation.NavigateTo($"/podcast-assets?transcript={encoded}");
+    }
 
     private void AddLog(string message, string level = "info")
     {

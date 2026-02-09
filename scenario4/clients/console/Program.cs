@@ -20,6 +20,9 @@ namespace TranscriptionClient
         public string ModelKey { get; set; } = "parakeet";
         public string? LanguageCode { get; set; }
         public bool IncludeTimestamps { get; set; } = true;
+        public bool GenerateAssets { get; set; }
+        public string? TranscriptFilePath { get; set; }
+        public string? NimUrl { get; set; }
     }
     
     class Program
@@ -38,6 +41,20 @@ namespace TranscriptionClient
 
             // Parse configuration from arguments
             var config = ParseArguments(args);
+
+            // Standalone asset-generation mode: no audio file needed, just a transcript file
+            if (config.GenerateAssets && !string.IsNullOrEmpty(config.TranscriptFilePath))
+            {
+                if (!File.Exists(config.TranscriptFilePath))
+                {
+                    Console.WriteLine($"Error: Transcript file not found: {config.TranscriptFilePath}");
+                    return;
+                }
+
+                var transcriptContent = await File.ReadAllTextAsync(config.TranscriptFilePath);
+                await RunPodcastAssetGeneration(config, transcriptContent);
+                return;
+            }
             
             if (string.IsNullOrEmpty(config.AudioFilePath))
             {
@@ -91,11 +108,13 @@ namespace TranscriptionClient
                 Console.WriteLine($"  Timestamps: {config.IncludeTimestamps}");
                 Console.WriteLine($"  Mode: {(config.UseAsyncMode ? "Async" : "Sync")}\n");
 
+                string? transcribedText = null;
+
                 if (config.UseAsyncMode)
                 {
                     // Use async job mode
                     Console.WriteLine($"Starting async transcription job for: {Path.GetFileName(config.AudioFilePath)}");
-                    await TranscribeAsyncMode(client, config);
+                    transcribedText = await TranscribeAsyncMode(client, config);
                 }
                 else
                 {
@@ -103,9 +122,16 @@ namespace TranscriptionClient
                     Console.WriteLine($"Uploading and transcribing: {Path.GetFileName(config.AudioFilePath)}");
                     var result = await TranscribeAudio(client, config);
                     DisplayResult(result);
+                    transcribedText = result.text;
                 }
 
                 Console.WriteLine("\n✓ Transcription completed successfully");
+
+                // If requested, generate podcast assets from the transcription output
+                if (config.GenerateAssets && !string.IsNullOrEmpty(transcribedText))
+                {
+                    await RunPodcastAssetGeneration(config, transcribedText);
+                }
             }
             catch (Exception ex)
             {
@@ -168,6 +194,24 @@ namespace TranscriptionClient
                 {
                     config.IncludeTimestamps = false;
                 }
+                else if (arg == "--generate-assets")
+                {
+                    config.GenerateAssets = true;
+                }
+                else if (arg == "--transcript-file")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        config.TranscriptFilePath = args[++i];
+                    }
+                }
+                else if (arg == "--nim-url")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        config.NimUrl = args[++i];
+                    }
+                }
                 else if (!arg.StartsWith("-"))
                 {
                     nonFlagArgs.Add(arg);
@@ -192,6 +236,7 @@ namespace TranscriptionClient
         static void ShowUsage()
         {
             Console.WriteLine("Usage: TranscriptionClient <audio_file> [api_url] [options]");
+            Console.WriteLine("       TranscriptionClient --generate-assets --transcript-file <path>");
             Console.WriteLine("\nArguments:");
             Console.WriteLine("  audio_file  Path to audio file (.wav, .mp3, or .flac)");
             Console.WriteLine("  api_url     Optional. API server URL (default: http://localhost:8000)");
@@ -201,12 +246,17 @@ namespace TranscriptionClient
             Console.WriteLine("  --model, -m <model>  Model to use: 'parakeet' (default) or 'canary'");
             Console.WriteLine("  --language, -l <lng> Language for multilingual models: en, es, de, fr");
             Console.WriteLine("  --no-timestamps      Disable timestamp generation");
+            Console.WriteLine("  --generate-assets    Generate podcast assets after transcription");
+            Console.WriteLine("  --transcript-file <f> Use existing transcript file (with --generate-assets)");
+            Console.WriteLine("  --nim-url <url>      NIM LLM endpoint (default: from Aspire env or localhost:8000)");
             Console.WriteLine("\nExamples:");
             Console.WriteLine("  TranscriptionClient audio.mp3");
             Console.WriteLine("  TranscriptionClient audio.wav --async");
             Console.WriteLine("  TranscriptionClient audio.wav --model canary --language es");
             Console.WriteLine("  TranscriptionClient audio.mp3 http://server:8000 --async");
             Console.WriteLine("  TranscriptionClient audio.flac --model canary -l de --async");
+            Console.WriteLine("  TranscriptionClient audio.mp3 --generate-assets");
+            Console.WriteLine("  TranscriptionClient --generate-assets --transcript-file transcript.txt");
         }
 
         static async Task CheckHealth(HttpClient client)
@@ -252,7 +302,7 @@ namespace TranscriptionClient
             return result ?? throw new Exception("Failed to deserialize response");
         }
 
-        static async Task TranscribeAsyncMode(HttpClient client, TranscriptionConfig config)
+        static async Task<string?> TranscribeAsyncMode(HttpClient client, TranscriptionConfig config)
         {
             // Start the job
             using var form = new MultipartFormDataContent();
@@ -320,7 +370,7 @@ namespace TranscriptionClient
                         throw new Exception("Failed to get job result");
 
                     DisplayResult(result);
-                    return;
+                    return result.text;
                 }
                 else if (jobInfo.status == "failed")
                 {
@@ -370,6 +420,67 @@ namespace TranscriptionClient
             TimeSpan ts = TimeSpan.FromSeconds(seconds);
             return ts.ToString(@"hh\:mm\:ss\.fff");
         }
+
+        /// <summary>
+        /// Calls the NVIDIA NIM LLM container to generate podcast episode metadata
+        /// from the supplied transcript text.
+        /// </summary>
+        static async Task RunPodcastAssetGeneration(TranscriptionConfig config, string transcript)
+        {
+            Console.WriteLine("\n=== PODCAST ASSET GENERATION ===\n");
+
+            // Resolve the NIM endpoint: explicit flag > Aspire env var > default
+            var nimEndpoint = config.NimUrl
+                ?? Environment.GetEnvironmentVariable("services__nim-llm__http__0")
+                ?? "http://localhost:8000";
+
+            Console.WriteLine($"NIM endpoint: {nimEndpoint}");
+            Console.WriteLine($"Transcript length: {transcript.Length} characters");
+            Console.WriteLine("Sending to NIM LLM for analysis...\n");
+
+            var chatApi = new OpenAI.Chat.ChatClient(
+                model: "nvidia/llama-3.2-nv-minitron-4b-instruct",
+                credential: new System.ClientModel.ApiKeyCredential("nim-local"),
+                options: new OpenAI.OpenAIClientOptions
+                {
+                    Endpoint = new Uri(nimEndpoint)
+                });
+
+            var roleMsg = new OpenAI.Chat.SystemChatMessage(
+                "You are a podcast production assistant. "
+                + "Given a transcript, generate a concise episode title, "
+                + "an engaging episode description (2-3 sentences), "
+                + "and 5-8 relevant tags.");
+
+            var userMsg = new OpenAI.Chat.UserChatMessage(
+                "Here is the transcript:\n\n" + transcript + "\n\n"
+                + "Generate the following in JSON format:\n"
+                + "- title\n- description\n- tags (array of strings)");
+
+            var opts = new OpenAI.Chat.ChatCompletionOptions
+            {
+                ResponseFormat = OpenAI.Chat.ChatResponseFormat.CreateJsonObjectFormat()
+            };
+
+            var reply = await chatApi.CompleteChatAsync(
+                [roleMsg, userMsg], opts);
+
+            var rawJson = reply.Value.Content[0].Text;
+            var episode = JsonSerializer.Deserialize<NimEpisodeResult>(rawJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (episode is null)
+            {
+                Console.WriteLine("⚠️ Could not parse the NIM response.");
+                Console.WriteLine($"Raw response:\n{rawJson}");
+                return;
+            }
+
+            Console.WriteLine($"  Title:       {episode.Title}");
+            Console.WriteLine($"  Description: {episode.Description}");
+            Console.WriteLine($"  Tags:        {string.Join(", ", episode.Tags ?? [])}");
+            Console.WriteLine("\n✓ Podcast asset generation complete");
+        }
     }
 
     // Response models
@@ -413,5 +524,15 @@ namespace TranscriptionClient
         public string? completed_at { get; set; }
         public string? error { get; set; }
         public TranscriptionResponse? result { get; set; }
+    }
+
+    /// <summary>
+    /// Represents the JSON response from NIM for podcast episode metadata.
+    /// </summary>
+    class NimEpisodeResult
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string[]? Tags { get; set; }
     }
 }

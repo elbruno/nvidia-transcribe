@@ -30,10 +30,28 @@ var apiServer = builder.AddDockerfile("apiserver", "../server")
     .WithContainerRuntimeArgs("--gpus=all")  // Enable GPU passthrough (requires NVIDIA Container Toolkit)
     .WithLifetime(ContainerLifetime.Persistent);
 
-// Add server-side Blazor web client with Aspire service defaults
+// NVIDIA NIM LLM container – used for podcast asset generation.
+// The model image can be overridden via configuration (key: NIM_IMAGE).
+// Default: nvidia/llama-3.2-nv-minitron-4b-instruct (4B params, ~8 GB VRAM, fits alongside ASR on 12 GB cards).
+// NGC_API_KEY must be set in user-secrets or environment for the NIM container to authenticate.
+var nimModelImage = builder.Configuration["NIM_IMAGE"]
+    ?? "nvcr.io/nim/nvidia/llama-3.2-nv-minitron-4b-instruct";
+
+var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
+    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "http", isProxied: false)
+    .WithHttpHealthCheck("/v1/health/ready")
+    .WithEnvironment("NGC_API_KEY", builder.Configuration["NGC_API_KEY"] ?? "")
+    .WithVolume("nim-model-cache", "/opt/nim/.cache")
+    .WithContainerRuntimeArgs("--gpus=all")
+    .WithLifetime(ContainerLifetime.Persistent);
+
+// Add server-side Blazor web client with Aspire service defaults.
+// Both the ASR server and the NIM LLM endpoints are injected via environment variables
+// so the webapp can reach them through Aspire service discovery.
 var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
-    .WithEnvironment("services__apiserver__http__0", apiServer.GetEndpoint("http"))    
-    .WithReference(appInsights) // App Insights (optional)
+    .WithEnvironment("services__apiserver__http__0", apiServer.GetEndpoint("http"))
+    .WithEnvironment("services__nim-llm__http__0", nimLlm.GetEndpoint("http"))
+    .WithReference(appInsights)
     .WaitFor(apiServer);
 
 builder.Build().Run();
