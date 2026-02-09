@@ -1,0 +1,101 @@
+using System.Text.Json;
+using OpenAI.Chat;
+
+namespace TranscriptionWebApp2.Services;
+
+/// <summary>
+/// Strongly-typed representation of the LLM-generated podcast metadata.
+/// </summary>
+public sealed record EpisodeMetadata
+{
+    public string Title { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string[] Tags { get; init; } = [];
+}
+
+/// <summary>
+/// Communicates with the NVIDIA NIM LLM container to produce
+/// structured podcast episode metadata from raw transcription text.
+/// The NIM container exposes an OpenAI-compatible chat completions API.
+/// </summary>
+public sealed class NimPodcastService
+{
+    private readonly IHttpClientFactory _clientFactory;
+    private readonly ILogger<NimPodcastService> _log;
+
+    private const string NimModelId = "meta/llama-3.2-3b-instruct";
+
+    /// <summary>
+    /// Maximum transcript length (in characters) sent to the model.
+    /// Keeps the prompt well within the 8192-token context window
+    /// while leaving room for the system prompt and the JSON response.
+    /// </summary>
+    private const int MaxTranscriptChars = 18_000;
+
+    private const string LlmRoleInstruction =
+        "You are a podcast production assistant. "
+        + "Given a transcript, generate a concise episode title, "
+        + "an engaging episode description (2-3 sentences), "
+        + "and 5-8 relevant tags.";
+
+    private static readonly JsonSerializerOptions DeserializeOpts = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public NimPodcastService(IHttpClientFactory clientFactory, ILogger<NimPodcastService> log)
+    {
+        _clientFactory = clientFactory;
+        _log = log;
+    }
+
+    /// <summary>
+    /// Sends the transcript to the NIM container and returns parsed episode metadata.
+    /// </summary>
+    public async Task<EpisodeMetadata> CreateEpisodeMetadataAsync(
+        string transcript,
+        CancellationToken ct = default)
+    {
+        var nimHttp = _clientFactory.CreateClient("nim");
+
+        var chatApi = new ChatClient(
+            model: NimModelId,
+            // NIM local containers don't validate API keys; the SDK requires a non-empty value
+            credential: new System.ClientModel.ApiKeyCredential("not-required"),
+            options: new OpenAI.OpenAIClientOptions { Endpoint = nimHttp.BaseAddress });
+        // Truncate very long transcripts to stay within the context window
+        if (transcript.Length > MaxTranscriptChars)
+        {
+            _log.LogWarning("Transcript truncated from {Original} to {Max} chars to fit context window",
+                transcript.Length, MaxTranscriptChars);
+            transcript = transcript[..MaxTranscriptChars];
+        }
+        _log.LogInformation("Requesting episode metadata from NIM – transcript length: {Len} chars", transcript.Length);
+
+        var userPrompt =
+            "Here is the transcript:\n\n" + transcript + "\n\n"
+            + "Generate the following in JSON format:\n"
+            + "- title\n- description\n- tags (array of strings)";
+
+        ChatMessage[] conversation =
+        [
+            new SystemChatMessage(LlmRoleInstruction),
+            new UserChatMessage(userPrompt)
+        ];
+
+        var completionOpts = new ChatCompletionOptions
+        {
+            ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat(),
+            MaxOutputTokenCount = 1024
+        };
+
+        var reply = await chatApi.CompleteChatAsync(conversation, completionOpts, ct);
+
+        var rawJson = reply.Value.Content[0].Text;
+        _log.LogInformation("NIM replied with {Len} chars of JSON", rawJson.Length);
+
+        var metadata = JsonSerializer.Deserialize<EpisodeMetadata>(rawJson, DeserializeOpts);
+        return metadata
+            ?? throw new InvalidOperationException("NIM returned JSON that could not be mapped to EpisodeMetadata.");
+    }
+}

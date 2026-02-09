@@ -10,16 +10,25 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Add HttpClient for API communication with service discovery
-// Note: Resilience handler (timeouts, retries) is configured by ServiceDefaults
-builder.Services.AddHttpClient("api", (serviceProvider, client) =>
+// HttpClient for the ASR transcription API (service discovery via Aspire)
+builder.Services.AddHttpClient("api", (_, httpClient) =>
 {
-    // Use Aspire service discovery to resolve the API endpoint
-    client.BaseAddress = new Uri("http://apiserver");
+    httpClient.BaseAddress = new Uri("http://apiserver");
 });
 
-// Register TranscriptionApiService
+// HttpClient for the NVIDIA NIM LLM container (podcast asset generation)
+// Endpoint is injected by AppHost via service discovery env var
+builder.Services.AddHttpClient("nim", (sp, httpClient) =>
+{
+    var nimEndpoint = builder.Configuration["services__nim-llm__http__0"]
+                     ?? "http://localhost:8001";
+    // Append /v1 so the OpenAI SDK hits /v1/chat/completions
+    httpClient.BaseAddress = new Uri(nimEndpoint.TrimEnd('/') + "/v1");
+});
+
+// Application services
 builder.Services.AddScoped<TranscriptionApiService>();
+builder.Services.AddScoped<NimPodcastService>();
 
 var app = builder.Build();
 

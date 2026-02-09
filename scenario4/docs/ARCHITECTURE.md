@@ -66,6 +66,27 @@
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
+│                      NIM LLM LAYER                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────────────────┐                                   │
+│  │  NVIDIA NIM Container    │   Clients call NIM directly       │
+│  │  (Docker)                │   via OpenAI-compatible API       │
+│  │                          │                                   │
+│  │  Default model:          │   Endpoint:                       │
+│  │  Llama 3.2 3B Instruct   │   POST /v1/chat/completions      │
+│  │  (~6 GB VRAM)            │   GET  /v1/health/ready          │
+│  │                          │                                   │
+│  │  Features:               │   Output:                        │
+│  │  • Podcast asset gen     │   • Episode title                │
+│  │  • JSON structured output│   • Episode description          │
+│  │  • NGC API key auth      │   • Tags (5-8)                   │
+│  │  • Persistent container  │                                   │
+│  └──────────────────────────┘                                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT OPTIONS                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
@@ -81,7 +102,7 @@
 │  • CUDA 12.1 base image                                         │
 │                                                                 │
 │  .NET Aspire:                                                   │
-│  • Orchestration for web client + server                        │
+│  • Orchestration for web client + server + NIM LLM              │
 │  • Service discovery and health checks                          │
 │  • OpenTelemetry integration                                    │
 │  • Console client runs standalone                               │
@@ -201,6 +222,7 @@ Developer Machine
 ├─> Aspire AppHost: dotnet run
     ├─> Python Server (uvicorn)
     ├─> Blazor Web Client
+    ├─> NVIDIA NIM LLM Container (podcast assets)
     └─> Aspire Dashboard (monitoring)
 └─> Console Client: standalone dotnet run
 ```

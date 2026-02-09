@@ -1,0 +1,289 @@
+@page "/podcast-assets"
+@inject NimPodcastService NimSvc
+@inject NavigationManager Nav
+@inject ILogger<PodcastAssets> Log
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Podcast Assets</PageTitle>
+
+<div class="pa-root">
+    <h1>🎧 Podcast Asset Generation</h1>
+    <p class="pa-subtitle">
+        Turn any transcript into ready-to-publish episode metadata using NVIDIA NIM.
+    </p>
+
+    @* ── Transcript input area ── *@
+    <div class="pa-panel pa-panel-input">
+        <h2>📝 Transcript</h2>
+        <textarea class="pa-textarea"
+                  @bind="inputTranscript"
+                  placeholder="Paste a transcript here, or use the button on the Transcribe page after finishing a transcription…"
+                  rows="10"></textarea>
+        <small class="pa-char-count">@inputTranscript.Length characters entered</small>
+    </div>
+
+    @* ── Action bar ── *@
+    <div class="pa-panel pa-panel-action">
+        <button class="pa-btn-primary"
+                @onclick="RunGeneration"
+                disabled="@(busy || string.IsNullOrWhiteSpace(inputTranscript))">
+            @if (busy)
+            {
+                <span class="pa-spin"></span>
+                <span>Working…</span>
+            }
+            else
+            {
+                <span>🤖 Generate Episode Metadata</span>
+            }
+        </button>
+    </div>
+
+    @* ── Error banner ── *@
+    @if (failureReason is not null)
+    {
+        <div class="pa-panel pa-panel-err">
+            <p>⚠️ @failureReason</p>
+        </div>
+    }
+
+    @* ── Results cards ── *@
+    @if (episodeData is not null)
+    {
+        <div class="pa-panel pa-panel-results">
+            <div class="pa-results-header">
+                <h2>✨ Episode Metadata</h2>
+                <button class="pa-btn-outline" @onclick="DownloadJson" title="Save as JSON">📋 Export JSON</button>
+            </div>
+
+            <div class="pa-card">
+                <span class="pa-card-label">Title</span>
+                <div class="pa-card-body pa-title-body">@episodeData.Title</div>
+                <button class="pa-btn-tiny" @onclick="() => CopyText(episodeData.Title)">📋</button>
+            </div>
+
+            <div class="pa-card">
+                <span class="pa-card-label">Description</span>
+                <div class="pa-card-body pa-desc-body">@episodeData.Description</div>
+                <button class="pa-btn-tiny" @onclick="() => CopyText(episodeData.Description)">📋</button>
+            </div>
+
+            <div class="pa-card">
+                <span class="pa-card-label">Tags</span>
+                <div class="pa-tag-list">
+                    @foreach (var t in episodeData.Tags)
+                    {
+                        <span class="pa-tag">@t</span>
+                    }
+                </div>
+                <button class="pa-btn-tiny" @onclick="() => CopyText(string.Join(TagSeparator, episodeData.Tags))">📋</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string inputTranscript = string.Empty;
+    private bool busy;
+    private string? failureReason;
+    private EpisodeMetadata? episodeData;
+    private const string TagSeparator = ", ";
+
+    protected override void OnInitialized()
+    {
+        // Accept transcript text passed via query-string from the Transcribe page
+        var uri = new Uri(Nav.Uri);
+        var queryDict = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (queryDict.TryGetValue("transcript", out var incoming) && !string.IsNullOrWhiteSpace(incoming))
+            inputTranscript = incoming.ToString();
+    }
+
+    private async Task RunGeneration()
+    {
+        if (string.IsNullOrWhiteSpace(inputTranscript) || busy)
+            return;
+
+        busy = true;
+        failureReason = null;
+        episodeData = null;
+        StateHasChanged();
+
+        try
+        {
+            episodeData = await NimSvc.CreateEpisodeMetadataAsync(inputTranscript);
+        }
+        catch (Exception ex)
+        {
+            failureReason = $"Generation failed – {ex.Message}";
+            Log.LogError(ex, "NIM podcast metadata generation error");
+        }
+        finally
+        {
+            busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyText(string value)
+    {
+        try { await JS.InvokeVoidAsync("copyToClipboard", value); }
+        catch (Exception ex) { Log.LogWarning(ex, "Clipboard copy failed"); }
+    }
+
+    private async Task DownloadJson()
+    {
+        if (episodeData is null) return;
+        try
+        {
+            var payload = System.Text.Json.JsonSerializer.Serialize(
+                episodeData,
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+                });
+            await JS.InvokeVoidAsync("downloadTextFile", payload, "episode_metadata.json");
+        }
+        catch (Exception ex) { Log.LogWarning(ex, "JSON export failed"); }
+    }
+}
+
+<style>
+    /* ── Layout ── */
+    .pa-root {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    .pa-root h1 {
+        color: #333;
+        border-bottom: 3px solid #76b900;
+        padding-bottom: 10px;
+        margin-bottom: 8px;
+        font-size: 2rem;
+    }
+    .pa-subtitle {
+        color: #666;
+        margin-bottom: 28px;
+        font-size: 1.05rem;
+    }
+
+    /* ── Panels ── */
+    .pa-panel {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.1);
+        margin-bottom: 20px;
+        overflow: hidden;
+        padding: 18px 22px;
+    }
+    .pa-panel h2 { color: #333; font-size: 1.2rem; margin: 0 0 12px; }
+
+    .pa-panel-input  { border-left: 4px solid #76b900; }
+    .pa-panel-action { border-left: 4px solid #2196f3; text-align: center; }
+    .pa-panel-err    { border-left: 4px solid #dc3545; }
+    .pa-panel-err p  { color: #dc3545; margin: 0; font-weight: 500; }
+    .pa-panel-results { border-left: 4px solid #ff9800; }
+
+    /* ── Transcript textarea ── */
+    .pa-textarea {
+        width: 100%;
+        min-height: 140px;
+        padding: 14px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        resize: vertical;
+        background: #fafafa;
+        color: #333;
+        transition: border-color .25s;
+    }
+    .pa-textarea:focus { outline: none; border-color: #76b900; box-shadow: 0 0 0 3px rgba(118,185,0,.12); }
+    .pa-char-count { display: block; margin-top: 6px; color: #999; font-size: .85rem; }
+
+    /* ── Primary button ── */
+    .pa-btn-primary {
+        padding: 16px 46px;
+        font-size: 1.25rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #76b900, #5a8a00);
+        border: none;
+        border-radius: 50px;
+        color: #fff;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 4px 14px rgba(118,185,0,.4);
+        transition: all .25s;
+    }
+    .pa-btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(118,185,0,.5); }
+    .pa-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+
+    .pa-spin {
+        width: 18px; height: 18px;
+        border: 2px solid rgba(255,255,255,.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: pa-rotate .75s linear infinite;
+    }
+
+    /* ── Results header ── */
+    .pa-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+    .pa-btn-outline {
+        padding: 7px 14px;
+        font-size: .88rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        color: #555;
+        transition: all .2s;
+    }
+    .pa-btn-outline:hover { background: #f5f5f5; border-color: #bbb; }
+
+    /* ── Asset cards ── */
+    .pa-card {
+        background: #fafafa;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 14px;
+        position: relative;
+    }
+    .pa-card-label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #76b900; }
+    .pa-card-body  { font-size: 1rem; color: #333; line-height: 1.6; margin-top: 6px; }
+    .pa-title-body { font-size: 1.25rem; font-weight: 600; }
+    .pa-desc-body  { font-style: italic; }
+
+    .pa-btn-tiny {
+        position: absolute; top: 10px; right: 10px;
+        padding: 3px 7px; font-size: .78rem;
+        border: 1px solid #ddd; border-radius: 4px;
+        background: #fff; cursor: pointer;
+        transition: background .2s;
+    }
+    .pa-btn-tiny:hover { background: #eee; }
+
+    /* ── Tags ── */
+    .pa-tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .pa-tag {
+        padding: 5px 13px;
+        background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+        color: #2e7d32;
+        border-radius: 18px;
+        font-size: .88rem;
+        font-weight: 500;
+    }
+
+    @@keyframes pa-rotate { to { transform: rotate(360deg); } }
+
+    @@media (max-width: 640px) {
+        .pa-root { padding: 12px; }
+        .pa-btn-primary { padding: 12px 28px; font-size: 1.05rem; }
+    }
+</style>
