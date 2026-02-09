@@ -27,18 +27,28 @@ Generate podcast episode titles, descriptions, and tags from any transcript usin
 - **Web app**: Dedicated "Podcast Assets" page with paste-a-transcript mode; also accessible via a button on the Transcribe results view
 - **Console client**: `--generate-assets` flag after transcription, or standalone with `--transcript-file <path>`
 - **Architecture**: Clients call the NIM container directly via its OpenAI-compatible `/v1/chat/completions` endpoint
-- **Default model**: `nvidia/llama-3.2-nv-minitron-4b-instruct` (4B params, ~8 GB VRAM – coexists with ASR on a 12 GB GPU)
+- **Default model**: `meta/llama-3.2-3b-instruct` (3B params, ~6 GB VRAM – coexists with ASR on a 12 GB GPU)
 - **Configurable**: Override the NIM image via `NIM_IMAGE` config; set `NGC_API_KEY` in user secrets
 
 #### Prerequisites
 
 1. **NGC API Key** – Sign up at [build.nvidia.com](https://build.nvidia.com), generate an API key
-2. **Add to Aspire user secrets**:
+2. **Authenticate Docker with NVIDIA NGC** (required before pulling NIM images):
+   ```bash
+   docker login nvcr.io
+   # Username: $oauthtoken
+   # Password: <your-ngc-api-key>
+   ```
+3. **Pull the NIM image** (recommended before first Aspire run — the image is large):
+   ```bash
+   docker pull nvcr.io/nim/meta/llama-3.2-3b-instruct:latest
+   ```
+4. **Add the NGC API Key to Aspire user secrets** (used by the NIM container at runtime):
    ```bash
    cd scenario4/AppHost
    dotnet user-secrets set "NGC_API_KEY" "<your-key>"
    ```
-3. The NIM container will pull automatically when you run the Aspire AppHost
+5. Run the Aspire AppHost — it will use the locally cached NIM image
 
 #### NIM Resources
 
@@ -46,6 +56,7 @@ Official NVIDIA documentation for NIM containers:
 - [NIM Overview](https://docs.nvidia.com/nim/large-language-models/latest/introduction.html) - Introduction to NVIDIA NIM
 - [NIM Getting Started Guide](https://docs.nvidia.com/nim/large-language-models/latest/getting-started.html) - Docker deployment and configuration
 - [NGC Catalog](https://catalog.ngc.nvidia.com/) - Browse available NIM models
+- [Llama 3.2 3B Instruct NIM](https://catalog.ngc.nvidia.com/orgs/nim/teams/meta/containers/llama-3.2-3b-instruct) - Default LLM container used for podcast asset generation
 - [Build with NVIDIA](https://build.nvidia.com/) - Sign up and manage API keys
 
 ## 🎙️ Using the Transcription Feature
@@ -148,7 +159,7 @@ The application works in both GPU and CPU modes - GPU is an optimization, not a 
          │        OpenAI-compat API          ┌──────────────────┐
          ├──────────────────────────────────▶│  NVIDIA NIM      │
          │                                   │  LLM Container   │
-         │                                   │  (Minitron 4B)   │
+         │                                   │  (Llama 3.2 3B)  │
          │                                   │                  │
          │                                   │  Podcast Asset   │
          │                                   │  Generation      │
@@ -416,7 +427,7 @@ Then navigate to the Aspire dashboard to access the web client.
 - Requires significant memory for model loading (~2-4GB depending on models loaded)
 - GPU memory is automatically cleaned up after each transcription job
 - First startup is slow (~5-10 min) due to model download; subsequent runs use cached model
-- **NIM LLM VRAM**: The default 4B model needs ~6-8 GB VRAM in addition to ~1.5 GB for ASR; a 12 GB GPU can run both concurrently. Larger models (7B/8B) require 16-24 GB cards.
+- **NIM LLM VRAM**: The default 3B model needs ~6 GB VRAM in addition to ~1.5 GB for ASR; a 12 GB GPU can run both concurrently. Larger models (7B/8B) require 16-24 GB cards.
 
 ## Troubleshooting
 

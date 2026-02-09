@@ -74,8 +74,8 @@
 │  │  (Docker)                │   via OpenAI-compatible API       │
 │  │                          │                                   │
 │  │  Default model:          │   Endpoint:                       │
-│  │  Minitron 4B Instruct    │   POST /v1/chat/completions      │
-│  │  (~6-8 GB VRAM)          │   GET  /v1/health/ready          │
+│  │  Llama 3.2 3B Instruct   │   POST /v1/chat/completions      │
+│  │  (~6 GB VRAM)            │   GET  /v1/health/ready          │
 │  │                          │                                   │
 │  │  Features:               │   Output:                        │
 │  │  • Podcast asset gen     │   • Episode title                │

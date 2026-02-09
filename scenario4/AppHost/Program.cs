@@ -32,10 +32,10 @@ var apiServer = builder.AddDockerfile("apiserver", "../server")
 
 // NVIDIA NIM LLM container – used for podcast asset generation.
 // The model image can be overridden via configuration (key: NIM_IMAGE).
-// Default: nvidia/llama-3.2-nv-minitron-4b-instruct (4B params, ~8 GB VRAM, fits alongside ASR on 12 GB cards).
+// Default: meta/llama-3.2-3b-instruct (3B params, ~6 GB VRAM, fits alongside ASR on 12 GB cards).
 // NGC_API_KEY must be set in user-secrets or environment for the NIM container to authenticate.
 var nimModelImage = builder.Configuration["NIM_IMAGE"]
-    ?? "nvcr.io/nim/nvidia/llama-3.2-nv-minitron-4b-instruct";
+    ?? "nvcr.io/nim/meta/llama-3.2-3b-instruct";
 
 var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "http", isProxied: false)

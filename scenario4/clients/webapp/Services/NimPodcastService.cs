@@ -23,7 +23,7 @@ public sealed class NimPodcastService
     private readonly IHttpClientFactory _clientFactory;
     private readonly ILogger<NimPodcastService> _log;
 
-    private const string NimModelId = "nvidia/llama-3.2-nv-minitron-4b-instruct";
+    private const string NimModelId = "meta/llama-3.2-3b-instruct";
 
     private const string LlmRoleInstruction =
         "You are a podcast production assistant. "
