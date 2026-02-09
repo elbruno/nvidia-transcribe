@@ -34,9 +34,11 @@ webapp/
 │   │   └── NavMenu.razor      # Navigation menu
 │   └── Pages/
 │       ├── Home.razor         # Landing page
-│       └── Transcribe.razor   # Transcription page
+│       ├── Transcribe.razor   # Transcription page
+│       └── PodcastAssets.razor # NIM podcast asset generation page
 ├── Services/
-│   └── TranscriptionApiService.cs  # API client service
+│   ├── TranscriptionApiService.cs  # ASR API client service
+│   └── NimPodcastService.cs        # NIM LLM client for podcast assets
 ├── wwwroot/
 │   ├── app.css                # Application styles
 │   └── app.js                 # JS interop (copy, download, scroll)
@@ -86,3 +88,15 @@ Configure the API endpoint in `appsettings.json` if not using Aspire.
 - ServiceDefaults (Aspire shared project)
 - Microsoft.Extensions.Http.Resilience (via ServiceDefaults)
 - Microsoft.Extensions.ServiceDiscovery (via ServiceDefaults)
+- OpenAI NuGet package (for NIM LLM integration)
+
+## NIM Podcast Asset Generation
+
+The web app includes a **Podcast Assets** page (`/podcast-assets`) powered by an NVIDIA NIM LLM container:
+
+- **Paste mode**: Paste a transcript directly to generate episode title, description, and tags
+- **From transcription**: Navigate from the Transcribe page results to generate assets automatically
+- Uses the OpenAI-compatible API provided by the NIM container
+- Requires NGC API key configured in Aspire user secrets
+
+See the [Scenario 4 README](../../README.md) for NIM setup instructions.

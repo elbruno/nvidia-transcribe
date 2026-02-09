@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This toolkit provides local audio transcription using NVIDIA ASR models via the NeMo framework. It offers three scenarios with shared patterns for different use cases.
+This toolkit provides local audio transcription using NVIDIA ASR models via the NeMo framework. It offers four scenarios with shared patterns for different use cases.
 
 ## Repository Structure
 
@@ -22,8 +22,10 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │   ├── check_environment.py   # Validates Python, PyTorch, CUDA, dependencies
 │   ├── check_models.py        # Shows model download status
 │   └── README.md
+├── labs/                       # Experimental scripts
 ├── scenario1/                  # Simple CLI transcription
 │   ├── transcribe.py
+│   ├── simple-transcribe.py   # Simplified transcription script
 │   └── README.md
 ├── scenario2/                  # Interactive menu transcription
 │   ├── transcribe.py
@@ -34,17 +36,36 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 ├── scenario4/                  # Client-server architecture
 │   ├── server/                # Python FastAPI server
 │   │   ├── app.py
+│   │   ├── nvidia_asr_monitor.py
 │   │   ├── requirements.txt
+│   │   ├── requirements-windows.txt
 │   │   ├── Dockerfile
+│   │   ├── setup-venv.ps1/.sh
 │   │   └── README.md
 │   ├── clients/
 │   │   ├── console/          # C# console client
-│   │   └── blazor/           # Blazor web app client
+│   │   └── webapp/           # Blazor web app client
+│   ├── AppHost/              # .NET Aspire orchestration
+│   ├── ServiceDefaults/      # Shared Aspire service defaults
+│   ├── Directory.Build.props # Shared MSBuild properties
+│   ├── NvidiaTranscribe.slnx # Solution file
+│   ├── test_server.py        # Server integration test
 │   ├── README.md             # Only doc in scenario root
 │   └── docs/                 # All other scenario docs
 │       ├── QUICKREF.md
 │       ├── USAGE_EXAMPLES.md
-│       └── AZURE_DEPLOYMENT.md
+│       ├── ARCHITECTURE.md
+│       ├── AZURE_DEPLOYMENT.md
+│       ├── GPU_SETUP_GUIDE.md
+│       ├── STRUCTURE.md
+│       ├── TESTING_CHECKLIST.md
+│       ├── APPINSIGHTS_QUICKSTART.md
+│       ├── APPLICATION_INSIGHTS.md
+│       ├── IMPLEMENTATION_COMPLETE.md
+│       ├── IMPLEMENTATION_NOTES.md
+│       ├── IMPLEMENTATION_SUMMARY.md
+│       ├── IMPLEMENTATION_SUMMARY_SCENARIO4_ENHANCEMENTS.md
+│       └── OPTION2_IMPLEMENTATION.md
 └── output/                     # Shared output directory
 ```
 
@@ -65,7 +86,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 | `scenario1/` | Parakeet (English) | CLI for single file transcription |
 | `scenario2/` | Parakeet (English) | Interactive menu to select from local audio files |
 | `scenario3/` | Canary-1B (Multilingual) | Language-specific transcription (es, en, de, fr) |
-| `scenario4/` | Parakeet (English) | Client-server architecture with REST API |
+| `scenario4/` | Parakeet + Canary | Client-server architecture with REST API, .NET Aspire orchestration |
 
 Root `transcribe.py` is the original script (same as scenario2) - kept for backward compatibility.
 
@@ -172,6 +193,6 @@ Outputs appear in `output/` directory with `.txt` and `.srt` files.
 
 ```python
 MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"  # Scenarios 1 & 2 (English)
-MODEL_NAME = "nvidia/canary-1b"              # Scenario 3 (Multilingual)
+MODEL_NAME = "nvidia/canary-1b-v2"           # Scenario 3 default (Multilingual, supports 3 models)
 TARGET_SAMPLE_RATE = 16000                   # Required for all models
 ```
