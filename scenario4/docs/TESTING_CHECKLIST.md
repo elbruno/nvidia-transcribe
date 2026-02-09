@@ -191,9 +191,9 @@ Once testing confirms Option 2 is working:
 ## Additional Resources
 
 - [OPTION2_IMPLEMENTATION.md](OPTION2_IMPLEMENTATION.md) - Technical details
-- [README.md](README.md) - General usage guide
+- [README.md](../README.md) - General usage guide
 - [GPU_SETUP_GUIDE.md](GPU_SETUP_GUIDE.md) - GPU acceleration setup
-- [TROUBLESHOOTING.md](README.md#troubleshooting) - Common issues
+- [Troubleshooting](../README.md#troubleshooting) - Common issues
 
 ## Notes
 

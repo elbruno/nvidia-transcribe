@@ -160,7 +160,7 @@
 - PyTorch with CUDA support
 
 **Key Files:**
-- `server/app.py` - Main application (210 lines)
+- `server/app.py` - Main application (~850 lines)
 - `server/requirements.txt` - Dependencies
 - `server/Dockerfile` - Container image
 - `server/README.md` - Documentation

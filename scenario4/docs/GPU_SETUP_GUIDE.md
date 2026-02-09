@@ -45,6 +45,8 @@ docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
 
 Edit `scenario4/AppHost/Program.cs`:
 
+> **Note**: The code snippets below show historical context. The GPU runtime argument (`.WithContainerRuntimeArgs("--gpus=all")`) has already been applied in the current `AppHost/Program.cs`.
+
 Find this section:
 ```csharp
 var apiServer = builder.AddDockerfile("apiserver", "../server")

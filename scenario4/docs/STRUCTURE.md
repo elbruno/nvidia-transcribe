@@ -11,10 +11,13 @@ scenario4/
 │   └── NvidiaTranscribe.AppHost.csproj
 ├── ServiceDefaults/           # Shared Aspire service defaults
 │   ├── Extensions.cs          # OpenTelemetry, health checks, service discovery
+│   ├── TranscriptionTelemetry.cs  # Custom telemetry definitions
 │   └── ServiceDefaults.csproj
 ├── server/                    # Python FastAPI server
 │   ├── app.py                 # Main server application
-│   ├── requirements.txt       # Python dependencies
+│   ├── nvidia_asr_monitor.py  # NVIDIA ASR monitoring utilities
+│   ├── requirements.txt       # Python dependencies (Linux/Docker)
+│   ├── requirements-windows.txt  # Python dependencies (Windows)
 │   ├── Dockerfile             # Container image with GPU support
 │   └── setup-venv.ps1/.sh     # Virtual environment setup
 ├── clients/
@@ -26,12 +29,19 @@ scenario4/
 │       ├── Components/
 │       │   ├── App.razor
 │       │   ├── Routes.razor
+│       │   ├── _Imports.razor
 │       │   ├── Layout/
 │       │   └── Pages/
+│       │       ├── Home.razor
+│       │       ├── Transcribe.razor
+│       │       └── PodcastAssets.razor
 │       ├── Services/
-│       │   └── TranscriptionApiService.cs
+│       │   ├── TranscriptionApiService.cs
+│       │   └── NimPodcastService.cs
 │       └── TranscriptionWebApp2.csproj
+├── Directory.Build.props      # Shared MSBuild properties
 ├── NvidiaTranscribe.slnx      # Solution file
+├── test_server.py             # Server integration test
 └── README.md                  # Documentation
 ```
 
@@ -48,7 +58,7 @@ scenario4/
 
 ### Python Server
 - **Technology**: Python + FastAPI + Uvicorn
-- **Model**: NVIDIA Parakeet (English)
+- **Model**: NVIDIA Parakeet + Canary (English + Multilingual)
 - **Deployment**: Docker (with GPU support) or local venv
 - **API**: REST endpoints for transcription
 - **GPU**: Automatic GPU acceleration with CPU fallback
@@ -84,4 +94,4 @@ dotnet run -- <audio-file-path>
 
 Access the Aspire dashboard to see all services and their endpoints.
 
-See [README.md](README.md) for detailed setup and usage instructions.
+See [README.md](../README.md) for detailed setup and usage instructions.
