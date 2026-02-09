@@ -1,12 +1,13 @@
 # NVIDIA ASR Transcription Server
 
-FastAPI-based REST API server for audio transcription using NVIDIA Parakeet model with GPU acceleration (automatic CPU fallback).
+FastAPI-based REST API server for audio transcription using NVIDIA Parakeet and Canary-1B models with GPU acceleration (automatic CPU fallback).
 
 ## Features
 
 - 🎙️ Audio transcription via REST API
 - 📝 Returns text and timestamp segments
 - 🔄 Supports WAV, MP3, and FLAC formats
+- 🌍 Dual model support: Parakeet (English) + Canary-1B (Multilingual)
 - 🚀 FastAPI with automatic API documentation
 - 🐳 Docker containerization with GPU support
 - 🔧 Health check endpoint
@@ -214,8 +215,11 @@ Transcribe an audio file (synchronous - waits for completion)
 
 **Request:**
 - Content-Type: `multipart/form-data`
-- Field name: `file`
-- Supported formats: `.wav`, `.mp3`, `.flac`
+- Fields:
+  - `file` (required) - Audio file (`.wav`, `.mp3`, `.flac`)
+  - `model` (optional) - `"parakeet"` (default) or `"canary"`
+  - `language` (optional) - `"en"`, `"es"`, `"de"`, `"fr"` (for Canary model)
+  - `include_timestamps` (optional) - `"true"` (default) or `"false"`
 
 **Response:**
 ```json
@@ -402,7 +406,7 @@ The async job mode is ideal for:
 
 ### Environment Variables
 
-- `MODEL_NAME`: Model to use (default: `nvidia/parakeet-tdt-0.6b-v2`)
+- `MODEL_NAME`: Default model to load at startup (default: `nvidia/parakeet-tdt-0.6b-v2`). Canary-1B is loaded on-demand when first requested.
 - `PORT`: Server port (default: 8000)
 
 ### CORS

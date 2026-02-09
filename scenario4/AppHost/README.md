@@ -129,7 +129,7 @@ The cache persists across container restarts and Aspire sessions.
 The Python server runs as a Docker container configured in `Program.cs`:
 ```csharp
 var apiServer = builder.AddDockerfile("apiserver", "../server")
-    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "apiendpoint", isProxied: false)
+    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "http", isProxied: false)
     .WithHttpHealthCheck("/health")
     .WithEnvironment("PYTHONUNBUFFERED", "1");
 ```
@@ -178,7 +178,7 @@ azd init
 azd up
 ```
 
-See [Azure Deployment Guide](../AZURE_DEPLOYMENT.md) for detailed instructions.
+See [Azure Deployment Guide](../docs/AZURE_DEPLOYMENT.md) for detailed instructions.
 
 ## Standalone Mode
 

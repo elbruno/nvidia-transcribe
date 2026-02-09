@@ -6,7 +6,7 @@ Command-line client for sending audio files to the NVIDIA ASR transcription serv
 
 ## Requirements
 
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 
 ## Installation
 
@@ -26,6 +26,28 @@ dotnet run audio_file.mp3
 ```bash
 dotnet run audio_file.mp3 http://server-url:8000
 ```
+
+**Async job mode (for long audio files):**
+```bash
+dotnet run audio.mp3 --async
+```
+
+**Model selection (Canary for multilingual):**
+```bash
+dotnet run audio.mp3 --model canary --language es
+```
+
+**All available CLI flags:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--async` | `-a` | Use async job mode with status polling |
+| `--model` | `-m` | Model: `parakeet` (default) or `canary` |
+| `--language` | `-l` | Language: `en`, `es`, `de`, `fr` (for Canary model) |
+| `--no-timestamps` | | Disable timestamp generation (Parakeet only) |
+| `--generate-assets` | | Generate podcast assets (title, description, tags) via NIM |
+| `--transcript-file` | | Path to a transcript file for standalone asset generation |
+| `--nim-url` | | NIM endpoint URL (default: from Aspire service discovery) |
 
 ## Building
 
@@ -49,8 +71,17 @@ dotnet run audio.wav
 # Transcribe an MP3 file with custom server
 dotnet run podcast.mp3 http://api.example.com:8000
 
+# Async mode with Canary model and German language
+dotnet run audio.mp3 --model canary -l de --async
+
+# Generate podcast assets after transcription
+dotnet run audio.mp3 --generate-assets
+
+# Generate assets from an existing transcript file
+dotnet run --generate-assets --transcript-file transcript.txt
+
 # Run built executable
-./bin/Release/net8.0/TranscriptionClient audio.mp3
+./bin/Release/net10.0/TranscriptionClient audio.mp3
 ```
 
 ## Output

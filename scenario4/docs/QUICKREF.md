@@ -237,7 +237,7 @@ python test_server.py http://server:8000
 
 - Main README: `scenario4/README.md`
 - Server docs: `scenario4/server/README.md`
-- Azure deployment: `scenario4/AZURE_DEPLOYMENT.md`
+- Azure deployment: `scenario4/docs/AZURE_DEPLOYMENT.md`
 - Console client: `scenario4/clients/console/README.md`
 - Web client: `scenario4/clients/webapp/README.md`
 - Aspire orchestration: `scenario4/AppHost/README.md`

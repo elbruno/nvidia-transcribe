@@ -111,5 +111,5 @@ dotnet add package Azure.Monitor.OpenTelemetry.AspNetCore
 ## More Information
 
 - Full setup guide: [docs/APPLICATION_INSIGHTS.md](APPLICATION_INSIGHTS.md)
-- Azure deployment: [AZURE_DEPLOYMENT.md](../AZURE_DEPLOYMENT.md)
+- Azure deployment: [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md)
 - Scenario 4 overview: [README.md](../README.md)

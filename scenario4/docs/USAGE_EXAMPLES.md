@@ -484,5 +484,5 @@ The Blazor web app automatically uses async job mode:
 
 - Main README: `../README.md`
 - API Documentation: `http://localhost:8000/docs` (when server is running)
-- Azure Deployment Guide: `../AZURE_DEPLOYMENT.md`
-- Quick Reference: `../QUICKREF.md`
+- Azure Deployment Guide: `AZURE_DEPLOYMENT.md`
+- Quick Reference: `QUICKREF.md`

@@ -84,4 +84,4 @@ dotnet run -- <audio-file-path>
 
 Access the Aspire dashboard to see all services and their endpoints.
 
-See [README.md](README.md) for detailed setup and usage instructions.
+See [README.md](../README.md) for detailed setup and usage instructions.

@@ -1,5 +1,7 @@
 # NVIDIA ASR Transcription Toolkit - Implementation Plan
 
+> **Note**: This plan covers the original v2.0 implementation (Scenarios 1–3). For Scenario 4 (client-server architecture), see [`scenario4/docs/`](../scenario4/docs/).
+
 ## Problem Statement
 
 Create a Python toolkit that uses NVIDIA ASR models to transcribe audio files locally. The toolkit is organized into three scenarios to support different use cases:
@@ -56,7 +58,7 @@ All scenarios should:
 
 ### Scenario 1: Simple CLI Implementation
 
-- [x] Create `scenario1_simple.py` script with:
+- [x] Create `scenario1/transcribe.py` script with:
   - [x] Command-line argument parsing for audio file path
   - [x] Help text and usage instructions
   - [x] Model loading with progress feedback (Parakeet)
@@ -66,7 +68,7 @@ All scenarios should:
 
 ### Scenario 2: Interactive Menu Implementation
 
-- [x] Create `scenario2_interactive.py` (based on original `transcribe.py`) with:
+- [x] Create `scenario2/transcribe.py` (based on original `transcribe.py`) with:
   - [x] Audio file discovery (scan for .wav, .flac, .mp3 in script directory)
   - [x] Interactive file selection menu (numbered list, first as default)
   - [x] Model loading with progress feedback (Parakeet)
@@ -75,7 +77,7 @@ All scenarios should:
 
 ### Scenario 3: Multilingual Implementation
 
-- [x] Create `scenario3_multilingual.py` script with:
+- [x] Create `scenario3/transcribe.py` script with:
   - [x] Command-line argument parsing for audio file and language code
   - [x] Support for multiple languages (es, en, de, fr)
   - [x] Model loading with Canary-1B

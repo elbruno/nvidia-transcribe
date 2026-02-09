@@ -307,7 +307,7 @@ python fix_lhotse.py
 **Solution**: Explicitly specify the language code
 ```bash
 # Instead of relying on default
-python scenario3_multilingual.py audio.mp3 es
+python scenario3/transcribe.py audio.mp3 es
 ```
 
 ### Models downloading slowly

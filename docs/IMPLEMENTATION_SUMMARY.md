@@ -1,12 +1,14 @@
 # Implementation Summary
 
+> **Note**: This document covers the v2.0 implementation (Scenarios 1–3 only). For Scenario 4 (client-server architecture), see [`scenario4/docs/`](../scenario4/docs/).
+
 ## Objective
 Reorganize the NVIDIA ASR transcription repository into a structured multi-scenario toolkit with multilingual support.
 
 ## What Was Implemented
 
 ### 1. Scenario 1: Simple CLI Transcription
-**File**: `scenario1_simple.py`
+**File**: `scenario1/transcribe.py`
 
 **Features**:
 - Command-line interface accepting audio file path as argument
@@ -17,8 +19,8 @@ Reorganize the NVIDIA ASR transcription repository into a structured multi-scena
 
 **Usage**:
 ```bash
-python scenario1_simple.py audio_file.mp3
-python scenario1_simple.py --help
+python scenario1/transcribe.py audio_file.mp3
+python scenario1/transcribe.py --help
 ```
 
 **Best for**: Batch processing, automation, command-line workflows
@@ -26,7 +28,7 @@ python scenario1_simple.py --help
 ---
 
 ### 2. Scenario 2: Interactive Menu Transcription
-**File**: `scenario2_interactive.py`
+**File**: `scenario2/transcribe.py`
 
 **Features**:
 - Interactive menu-based file selection
@@ -37,7 +39,7 @@ python scenario1_simple.py --help
 
 **Usage**:
 ```bash
-python scenario2_interactive.py
+python scenario2/transcribe.py
 ```
 
 **Best for**: Beginners, manual file selection, exploring multiple files
@@ -45,7 +47,7 @@ python scenario2_interactive.py
 ---
 
 ### 3. Scenario 3: Multilingual Transcription
-**File**: `scenario3_multilingual.py`
+**File**: `scenario3/transcribe.py`
 
 **Features**:
 - Command-line interface with language parameter
@@ -56,10 +58,10 @@ python scenario2_interactive.py
 
 **Usage**:
 ```bash
-python scenario3_multilingual.py audio.mp3        # Spanish (default)
-python scenario3_multilingual.py audio.mp3 es     # Spanish
-python scenario3_multilingual.py audio.mp3 en     # English
-python scenario3_multilingual.py --help
+python scenario3/transcribe.py audio.mp3        # Spanish (default)
+python scenario3/transcribe.py audio.mp3 es     # Spanish
+python scenario3/transcribe.py audio.mp3 en     # English
+python scenario3/transcribe.py --help
 ```
 
 **Best for**: Non-English content, Spanish transcription, multilingual projects
