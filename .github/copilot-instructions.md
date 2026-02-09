@@ -22,7 +22,6 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │   ├── check_environment.py   # Validates Python, PyTorch, CUDA, dependencies
 │   ├── check_models.py        # Shows model download status
 │   └── README.md
-├── labs/                       # Experimental scripts
 ├── scenario1/                  # Simple CLI transcription
 │   ├── transcribe.py
 │   ├── simple-transcribe.py   # Simplified transcription script
@@ -193,6 +192,6 @@ Outputs appear in `output/` directory with `.txt` and `.srt` files.
 
 ```python
 MODEL_NAME = "nvidia/parakeet-tdt-0.6b-v2"  # Scenarios 1 & 2 (English)
-MODEL_NAME = "nvidia/canary-1b-v2"           # Scenario 3 default (Multilingual, supports 3 models)
+MODEL_NAME = "nvidia/canary-1b-v2"           # Scenario 3 default (Multilingual, supports canary-1b, canary-1b-v2, parakeet-1.1b)
 TARGET_SAMPLE_RATE = 16000                   # Required for all models
 ```

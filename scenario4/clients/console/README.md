@@ -44,7 +44,7 @@ dotnet run audio.mp3 --model canary --language es
 | `--async` | `-a` | Use async job mode with status polling |
 | `--model` | `-m` | Model: `parakeet` (default) or `canary` |
 | `--language` | `-l` | Language: `en`, `es`, `de`, `fr` (for Canary model) |
-| `--no-timestamps` | | Disable timestamp generation (Parakeet only) |
+| `--no-timestamps` | | Disable timestamp generation (applies to Parakeet only; ignored for Canary) |
 | `--generate-assets` | | Generate podcast assets (title, description, tags) via NIM |
 | `--transcript-file` | | Path to a transcript file for standalone asset generation |
 | `--nim-url` | | NIM endpoint URL (default: from Aspire service discovery) |

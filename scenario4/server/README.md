@@ -218,8 +218,8 @@ Transcribe an audio file (synchronous - waits for completion)
 - Fields:
   - `file` (required) - Audio file (`.wav`, `.mp3`, `.flac`)
   - `model` (optional) - `"parakeet"` (default) or `"canary"`
-  - `language` (optional) - `"en"`, `"es"`, `"de"`, `"fr"` (for Canary model)
-  - `include_timestamps` (optional) - `"true"` (default) or `"false"`
+  - `language` (optional) - `"en"`, `"es"`, `"de"`, `"fr"` (used with Canary model only; ignored for Parakeet)
+  - `include_timestamps` (optional) - `"true"` (default) or `"false"` (applies to Parakeet only; Canary does not support timestamps)
 
 **Response:**
 ```json
