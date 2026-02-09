@@ -13,6 +13,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 ├── fix_lhotse.py               # Post-install compatibility fix
 ├── transcribe.py               # Legacy script (backward compatibility)
 ├── docs/                       # All documentation except main README
+│   ├── plans/               # Implementation plans (plan_YYMMDD_HHMM.md)
 │   ├── PLAN.md
 │   ├── QUICKREF.md
 │   ├── USAGE_EXAMPLES.md
@@ -55,6 +56,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 - **Utils folder**: `utils/` contains environment validation scripts (`check_environment.py`, `check_models.py`)
 - **Legacy support**: Root `transcribe.py` maintained for backward compatibility
 - **No audio files in repo**: Audio files (`.mp3`, `.wav`, `.flac`) are gitignored; users provide their own
+- **Plans**: All implementation plans are saved in `docs/plans/` with the naming convention `plan_YYMMDD_HHMM.md` (e.g., `plan_260209_1008.md` for a plan created on 2026-02-09 at 10:08). Plans capture feature proposals, architecture decisions, and implementation steps before work begins.
 
 ## Architecture & Scenarios
 
