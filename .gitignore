@@ -47,6 +47,10 @@ wwwroot/dist/
 # Logs
 *.log
 
+# Environment files
+.env
+.env.*
+
 # Temporary files
 tmp/
 temp/
