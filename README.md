@@ -45,6 +45,14 @@ cd scenario4/AppHost && dotnet run
 - NVIDIA GPU with CUDA recommended (CPU fallback available)
 - ~2.5GB disk space for models
 
+## Slides & Link Inventory
+
+The [`slides/`](slides/) folder contains visual references from the **Microsoft × NVIDIA** session, along with curated link inventories for each slide.
+
+| Slide | Description |
+|-------|-------------|
+| [Slide 6 — Azure AI Platform with NVIDIA Technologies](slides/slide06_azure_ai_platform_nvidia.md) | Overview of the joint Microsoft + NVIDIA stack across Build, Data, Models, Deployment, and Operations |
+
 ## References
 
 - [NVIDIA Parakeet Model](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) — English, CC-BY-4.0

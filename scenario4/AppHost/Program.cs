@@ -50,7 +50,7 @@ var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
 // Add server-side Blazor web client with Aspire service defaults.
 // Both the ASR server and the NIM LLM endpoints are injected via environment variables
 // so the webapp can reach them through Aspire service discovery.
-var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webappClient")
+var webappClient = builder.AddProject<Projects.TranscriptionWebApp2>("webapp-client")
     .WithEnvironment("services__apiserver__http__0", apiServer.GetEndpoint("http"))
     .WithEnvironment("services__nim-llm__http__0", nimLlm.GetEndpoint("http"))
     .WithReference(appInsights)
