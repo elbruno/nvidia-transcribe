@@ -1,0 +1,15 @@
+# Scenario 5 — Voice Agent Dependencies
+# Install PyTorch with CUDA first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# On Windows, install pynini stub first:
+#   pip install ./pynini_stub
+
+fastapi
+uvicorn[standard]
+soundfile
+numpy
+torch>=2.0.0
+scipy
+transformers
+bitsandbytes
+nemo_toolkit[asr,tts]>=2.6.1

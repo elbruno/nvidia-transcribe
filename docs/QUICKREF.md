@@ -63,6 +63,23 @@ curl -X POST http://localhost:8000/transcribe -F "file=@audio.mp3"
 curl -X POST http://localhost:8000/transcribe -F "file=@audio.mp3" -F "model=canary" -F "language=es"
 ```
 
+## Scenario 5: Voice Agent
+```bash
+# Setup (separate venv recommended)
+cd scenario5
+pip install -r requirements.txt
+
+# Install pynini stub (Windows only — enables TTS without C++ deps)
+pip install pynini_stub/
+
+# Run the voice agent server
+python app.py
+# Open http://localhost:8000 in your browser
+
+# Hold the talk button, speak, release to get a response
+# Toggle "Smart Mode" to enable LLM-powered responses
+```
+
 ## Backward Compatibility
 ```bash
 # Original script still works
@@ -84,5 +101,8 @@ All transcriptions are saved to: `output/`
 ## Model Information
 - **Scenario 1 & 2**: Parakeet TDT 0.6B v2 (English only, Commercial OK)
 - **Scenario 3**: Canary-1B (Multilingual, Non-commercial only)
+- **Scenario 5 ASR**: Parakeet TDT 0.6B v2 (English only, Commercial OK)
+- **Scenario 5 TTS**: FastPitch + HiFi-GAN (English, Commercial OK)
+- **Scenario 5 LLM**: TinyLlama-1.1B-Chat (Smart Mode, Apache-2.0)
 
 For detailed examples, see [USAGE_EXAMPLES.md](USAGE_EXAMPLES.md)

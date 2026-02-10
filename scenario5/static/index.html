@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA Voice Agent</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-bottom: 2px solid #76b900;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        header h1 {
+            font-size: 1.6rem;
+            color: #76b900;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        header p {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+
+        /* --- Top bar (status + smart mode) --- */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 1rem;
+            background: #111;
+            border-bottom: 1px solid #222;
+            flex-shrink: 0;
+            gap: 0.75rem;
+        }
+        #status {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+        }
+        .connected { color: #76b900; border: 1px solid #76b900; }
+        .disconnected { color: #ef5350; border: 1px solid #ef5350; }
+        .recording { color: #ffb74d; border: 1px solid #ffb74d; }
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        .model-select {
+            display: none;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+        .model-select.visible { display: flex; }
+        .model-select label { color: #666; }
+        .model-select select {
+            background: #222;
+            color: #e0e0e0;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 0.2rem 0.4rem;
+            font-size: 0.75rem;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444;
+            border-radius: 22px;
+            transition: 0.3s;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #ccc;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .switch input:checked + .slider { background-color: #76b900; }
+        .switch input:checked + .slider:before { transform: translateX(18px); background-color: #fff; }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            min-height: 0;
+        }
+        .chat-box {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            background: #111;
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .msg {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            max-width: 85%;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        .msg.user {
+            background: #1b3a1b;
+            border: 1px solid #76b900;
+            align-self: flex-end;
+        }
+        .msg.user-text {
+            background: #1b3a1b;
+            border: 1px solid #4a8c00;
+            align-self: flex-end;
+            font-style: italic;
+            opacity: 0.85;
+        }
+        .msg.agent {
+            background: #1a1a2e;
+            border: 1px solid #4a4a6e;
+            align-self: flex-start;
+        }
+        .msg.thinking {
+            background: #2a2a1e;
+            border: 1px solid #8a8a3e;
+            align-self: flex-start;
+            opacity: 0.7;
+            font-style: italic;
+        }
+        .msg .label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+            color: #76b900;
+        }
+        .msg.agent .label { color: #7b7bff; }
+        .msg.thinking .label { color: #c0c060; }
+
+        /* --- Controls --- */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            flex-shrink: 0;
+        }
+        .clear-chat-btn {
+            background: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .clear-chat-btn:hover { background: #444; color: #fff; }
+        #talkBtn {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #76b900, #5a8f00);
+            border: 3px solid #76b900;
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            line-height: 1.3;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #talkBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(118, 185, 0, 0.3);
+        }
+        #talkBtn.recording {
+            background: linear-gradient(145deg, #ef5350, #c62828);
+            border-color: #fff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(118, 185, 0, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(118, 185, 0, 0); }
+        }
+        .info {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #555;
+            flex-shrink: 0;
+            padding-bottom: 0.25rem;
+        }
+
+        /* --- Log panel (fixed bottom) --- */
+        .log-panel {
+            width: 100%;
+            background: #0d0d0d;
+            border-top: 2px solid #333;
+            flex-shrink: 0;
+        }
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 1rem;
+            background: #141414;
+            cursor: pointer;
+            user-select: none;
+        }
+        .log-header:hover { background: #1a1a1a; }
+        .log-header h2 {
+            font-size: 0.8rem;
+            color: #76b900;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .log-header .log-toggle {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .log-header .log-badge {
+            background: #76b900;
+            color: #000;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.1rem 0.45rem;
+            border-radius: 10px;
+            margin-left: 0.5rem;
+            display: none;
+        }
+        .log-body {
+            height: 130px;
+            overflow-y: auto;
+            padding: 0.3rem 0.75rem;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+        }
+        .log-body.collapsed {
+            height: 0;
+            padding: 0 0.75rem;
+            overflow: hidden;
+        }
+        .log-entry {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.1rem 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-ts { color: #555; white-space: nowrap; }
+        .log-level { font-weight: 700; white-space: nowrap; min-width: 3.5em; }
+        .log-level.INFO { color: #4fc3f7; }
+        .log-level.WARN { color: #ffb74d; }
+        .log-level.ERROR { color: #ef5350; }
+        .log-msg { color: #ccc; word-break: break-word; flex: 1; }
+        .log-detail-toggle {
+            color: #76b900;
+            cursor: pointer;
+            font-size: 0.65rem;
+            white-space: nowrap;
+        }
+        .log-detail {
+            display: none;
+            padding: 0.25rem 0.5rem;
+            margin: 0.1rem 0 0.2rem 4.5rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            color: #888;
+            font-size: 0.68rem;
+            white-space: pre-wrap;
+        }
+        .log-detail.open { display: block; }
+        .log-clear-btn {
+            background: #222;
+            color: #888;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.65rem;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+        .log-clear-btn:hover { background: #333; color: #fff; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎙️ NVIDIA Voice Agent</h1>
+        <p>Parakeet ASR · FastPitch + HiFiGAN TTS · TinyLlama-1.1B Smart Mode</p>
+    </header>
+
+    <div class="top-bar">
+        <div id="status" class="disconnected">Disconnected</div>
+        <div class="model-select" id="modelSelect">
+            <label for="modelPicker">Model</label>
+            <select id="modelPicker">
+                <option value="tinyllama">TinyLlama 1.1B (fast)</option>
+                <option value="phi3">Phi-3 Mini 3.8B (better)</option>
+            </select>
+        </div>
+        <div class="mode-toggle">
+            <span>Smart Mode</span>
+            <label class="switch">
+                <input type="checkbox" id="smartMode">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="chat-box" id="chatBox"></div>
+        <div class="controls">
+            <button class="clear-chat-btn" id="clearChatBtn">✕ Clear</button>
+            <button id="talkBtn">Hold to<br>Talk</button>
+        </div>
+        <div class="info">Press and hold the button to record · Release to send</div>
+    </div>
+
+    <!-- Real-time log panel -->
+    <div class="log-panel">
+        <div class="log-header" id="logHeader">
+            <h2>📋 Server Log <span class="log-badge" id="logBadge">0</span></h2>
+            <div style="display:flex;align-items:center;">
+                <button class="log-clear-btn" id="logClearBtn">Clear</button>
+                <span class="log-toggle" id="logToggle">▲</span>
+            </div>
+        </div>
+        <div class="log-body" id="logBody"></div>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const talkBtn = document.getElementById('talkBtn');
+        const statusEl = document.getElementById('status');
+        const logBody = document.getElementById('logBody');
+        const logHeader = document.getElementById('logHeader');
+        const logToggle = document.getElementById('logToggle');
+        const logBadge = document.getElementById('logBadge');
+        const logClearBtn = document.getElementById('logClearBtn');
+        const smartModeToggle = document.getElementById('smartMode');
+        const modelSelectDiv = document.getElementById('modelSelect');
+        const modelPicker = document.getElementById('modelPicker');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+
+        let ws = null;
+        let logWs = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let logCount = 0;
+        let logCollapsed = false;
+        let smartMode = false;
+
+        // --- Clear chat ---
+        clearChatBtn.addEventListener('click', () => {
+            chatBox.innerHTML = '';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'clear_history' }));
+            }
+            clientLog('Chat cleared (models stay loaded)');
+        });
+
+        // --- Smart mode toggle ---
+        function sendSmartModeConfig() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'config',
+                    smart_mode: smartModeToggle.checked,
+                    smart_model: modelPicker.value
+                }));
+            }
+        }
+        smartModeToggle.addEventListener('change', () => {
+            smartMode = smartModeToggle.checked;
+            modelSelectDiv.classList.toggle('visible', smartMode);
+            clientLog(`Smart Mode ${smartMode ? 'enabled' : 'disabled'}`);
+            sendSmartModeConfig();
+        });
+        modelPicker.addEventListener('change', () => {
+            clientLog(`Model changed to: ${modelPicker.options[modelPicker.selectedIndex].text}`);
+            sendSmartModeConfig();
+        });
+
+        // --- Log panel toggle ---
+        logHeader.addEventListener('click', (e) => {
+            if (e.target === logClearBtn) return;
+            logCollapsed = !logCollapsed;
+            logBody.classList.toggle('collapsed', logCollapsed);
+            logToggle.textContent = logCollapsed ? '▼' : '▲';
+        });
+        logClearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            logBody.innerHTML = '';
+            logCount = 0;
+            logBadge.style.display = 'none';
+        });
+
+        // --- Log WebSocket ---
+        function connectLogs() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            logWs = new WebSocket(`${proto}://${location.host}/ws/logs`);
+
+            logWs.onmessage = (event) => {
+                const entry = JSON.parse(event.data);
+                appendLog(entry.timestamp, entry.level, entry.message, entry.detail || '');
+            };
+            logWs.onclose = () => setTimeout(connectLogs, 3000);
+            logWs.onerror = () => logWs.close();
+        }
+
+        function appendLog(ts, level, msg, detail) {
+            const wrapper = document.createElement('div');
+
+            const row = document.createElement('div');
+            row.className = 'log-entry';
+
+            const tsEl = document.createElement('span');
+            tsEl.className = 'log-ts';
+            tsEl.textContent = ts;
+
+            const lvlEl = document.createElement('span');
+            lvlEl.className = `log-level ${level}`;
+            lvlEl.textContent = level;
+
+            const msgEl = document.createElement('span');
+            msgEl.className = 'log-msg';
+            msgEl.textContent = msg;
+
+            row.appendChild(tsEl);
+            row.appendChild(lvlEl);
+            row.appendChild(msgEl);
+
+            if (detail) {
+                const toggle = document.createElement('span');
+                toggle.className = 'log-detail-toggle';
+                toggle.textContent = '▶ details';
+                row.appendChild(toggle);
+
+                const detailEl = document.createElement('div');
+                detailEl.className = 'log-detail';
+                detailEl.textContent = detail;
+
+                toggle.addEventListener('click', () => {
+                    const open = detailEl.classList.toggle('open');
+                    toggle.textContent = open ? '▼ details' : '▶ details';
+                });
+
+                wrapper.appendChild(row);
+                wrapper.appendChild(detailEl);
+            } else {
+                wrapper.appendChild(row);
+            }
+
+            logBody.appendChild(wrapper);
+
+            logBody.scrollTop = logBody.scrollHeight;
+
+            logCount++;
+            logBadge.textContent = logCount;
+            logBadge.style.display = 'inline';
+
+            while (logBody.children.length > 200) {
+                logBody.removeChild(logBody.firstChild);
+            }
+        }
+
+        function clientLog(msg) {
+            const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            appendLog(ts, 'INFO', msg);
+        }
+
+        connectLogs();
+
+        // --- Voice WebSocket ---
+        function connect() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            ws = new WebSocket(`${proto}://${location.host}/ws/voice`);
+
+            ws.onopen = () => {
+                statusEl.textContent = 'Connected — ready';
+                statusEl.className = 'connected';
+                clientLog('Voice WebSocket connected');
+                sendSmartModeConfig();
+            };
+            ws.onclose = () => {
+                statusEl.textContent = 'Disconnected — reconnecting …';
+                statusEl.className = 'disconnected';
+                clientLog('Voice WebSocket disconnected — reconnecting…');
+                setTimeout(connect, 2000);
+            };
+            ws.onerror = () => ws.close();
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'transcript') {
+                    if (data.transcript) {
+                        addMessage('user-text', `💬 "${data.transcript}"`);
+                    }
+                    return;
+                }
+
+                if (data.type === 'thinking') {
+                    removeThinking();
+                    addMessage('thinking', '🤔 Thinking…');
+                    statusEl.textContent = 'Smart Mode — thinking …';
+                    return;
+                }
+
+                if (data.type === 'response') {
+                    removeThinking();
+                    const text = data.response || data.transcript || '';
+                    if (smartMode && data.response && data.response !== data.transcript) {
+                        addMessage('agent', `🧠 ${text}`);
+                    } else if (text) {
+                        addMessage('agent', `🔊 You just said: "${data.transcript}"`);
+                    }
+                    if (data.audio) {
+                        playAudio(data.audio);
+                    }
+                    statusEl.textContent = 'Connected — ready';
+                    statusEl.className = 'connected';
+                    return;
+                }
+
+                // Legacy fallback
+                if (data.transcript) {
+                    addMessage('agent', `🔊 ${data.transcript}`);
+                }
+                if (data.audio) {
+                    playAudio(data.audio);
+                }
+                statusEl.textContent = 'Connected — ready';
+                statusEl.className = 'connected';
+            };
+        }
+        connect();
+
+        // --- Chat UI ---
+        function removeThinking() {
+            const el = chatBox.querySelector('.msg.thinking');
+            if (el) el.remove();
+        }
+
+        function addMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = `msg ${role}`;
+            const label = document.createElement('div');
+            label.className = 'label';
+            if (role === 'user') label.textContent = 'You';
+            else if (role === 'user-text') label.textContent = 'You said';
+            else if (role === 'thinking') label.textContent = 'Agent';
+            else label.textContent = 'Agent';
+            div.appendChild(label);
+            div.appendChild(document.createTextNode(text));
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // --- Audio playback ---
+        function playAudio(b64) {
+            const audioBytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+            const blob = new Blob([audioBytes], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play().catch(e => clientLog(`Playback error: ${e.message}`));
+        }
+
+        // --- Recording ---
+        async function startRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') return;
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioCtx = new AudioContext({ sampleRate: 16000 });
+            const source = audioCtx.createMediaStreamSource(stream);
+            const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+            const audioData = [];
+            processor.onaudioprocess = (e) => {
+                audioData.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+            };
+            source.connect(processor);
+            processor.connect(audioCtx.destination);
+
+            mediaRecorder = { state: 'recording', stop: null };
+            mediaRecorder.stop = () => {
+                processor.disconnect();
+                source.disconnect();
+                stream.getTracks().forEach(t => t.stop());
+
+                const totalLength = audioData.reduce((acc, buf) => acc + buf.length, 0);
+                const merged = new Float32Array(totalLength);
+                let offset = 0;
+                for (const buf of audioData) {
+                    merged.set(buf, offset);
+                    offset += buf.length;
+                }
+
+                const wavBlob = encodeWAV(merged, 16000);
+                addMessage('user', `🎤 [audio ${(wavBlob.size / 1024).toFixed(1)} KB]`);
+                clientLog(`Sending ${(wavBlob.size / 1024).toFixed(1)} KB audio to server`);
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(wavBlob);
+                }
+                audioCtx.close();
+            };
+
+            mediaRecorder.start = () => {};
+            mediaRecorder.start();
+            talkBtn.classList.add('recording');
+            statusEl.textContent = '🔴 Recording …';
+            statusEl.className = 'recording';
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.state = 'inactive';
+                mediaRecorder.stop();
+                clientLog('Recording stopped');
+            }
+            talkBtn.classList.remove('recording');
+            statusEl.textContent = 'Processing …';
+            statusEl.className = 'connected';
+        }
+
+        // --- WAV encoder ---
+        function encodeWAV(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+
+            function writeString(offset, str) {
+                for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+            }
+
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, samples.length * 2, true);
+
+            for (let i = 0; i < samples.length; i++) {
+                const s = Math.max(-1, Math.min(1, samples[i]));
+                view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        // --- Button events (mouse + touch) ---
+        talkBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startRecording(); });
+        talkBtn.addEventListener('mouseup', (e) => { e.preventDefault(); stopRecording(); });
+        talkBtn.addEventListener('mouseleave', () => { if (talkBtn.classList.contains('recording')) stopRecording(); });
+        talkBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startRecording(); });
+        talkBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopRecording(); });
+    </script>
+</body>
+</html>

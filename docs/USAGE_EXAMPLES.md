@@ -206,16 +206,79 @@ Preview (XXX characters):
 
 ---
 
+## Scenario 5: Voice Agent
+
+**Use case**: Real-time voice interaction using ASR, TTS, and optional LLM Smart Mode, all running locally.
+
+**Models**: Parakeet TDT 0.6B v2 (ASR), FastPitch + HiFi-GAN (TTS), TinyLlama-1.1B-Chat (LLM, optional)
+
+### Setup
+
+```bash
+cd scenario5
+
+# Install dependencies (separate venv recommended)
+pip install -r requirements.txt
+
+# Windows only: install pynini stub for TTS support
+pip install pynini_stub/
+```
+
+### Basic Usage
+
+```bash
+# Start the voice agent server
+python app.py
+
+# Open in browser
+# http://localhost:8000
+```
+
+### Interactive Flow
+
+1. Open `http://localhost:8000` in your browser
+2. **Hold the talk button** (or press Space) to record
+3. **Release** to send audio to the server
+4. Server transcribes speech (ASR), generates a response, and speaks it back (TTS)
+5. Toggle **Smart Mode** to enable LLM-powered responses (TinyLlama)
+
+### Smart Mode
+
+When Smart Mode is enabled:
+- Your speech is transcribed, then sent to a local LLM (TinyLlama-1.1B-Chat)
+- The LLM generates a short conversational response (≤15 words)
+- The response is synthesized to speech via FastPitch + HiFi-GAN
+- Without Smart Mode, the server simply echoes your transcription back as speech
+
+### Expected Output
+
+The browser shows a chat-style UI with:
+- **Your speech** (transcribed text)
+- **Agent response** (text + audio playback)
+- **Logs panel** with real-time server events (ASR timing, TTS timing, LLM status)
+
+### Important Notes
+
+- **First run downloads models**: ASR (~1.2GB), TTS (~100MB), LLM (~700MB for 4-bit)
+- **GPU recommended**: TTS and LLM are significantly faster on GPU
+- **Port 8000**: Default server port (configurable in app.py)
+- **WebSocket-based**: Uses `/ws/voice` for audio and `/ws/logs` for real-time logs
+- **pynini stub**: Required on Windows to bypass pynini C++ build dependency for NeMo TTS
+
+---
+
 ## Comparing Scenarios
 
-| Feature | Scenario 1 | Scenario 2 | Scenario 3 |
-|---------|-----------|-----------|-----------|
-| **Interface** | Command-line argument | Interactive menu | Command-line argument |
-| **Model** | Parakeet (600M) | Parakeet (600M) | Canary-1B (1B) |
-| **Languages** | English only | English only | Multilingual |
-| **Use case** | Quick single file | Browse multiple files | Spanish/multilingual |
-| **License** | Commercial OK | Commercial OK | Non-commercial only |
-| **File selection** | Via argument | Interactive | Via argument |
+| Feature | Scenario 1 | Scenario 2 | Scenario 3 | Scenario 5 |
+|---------|-----------|-----------|-----------|------------|
+| **Interface** | Command-line argument | Interactive menu | Command-line argument | Browser (WebSocket) |
+| **Model** | Parakeet (600M) | Parakeet (600M) | Canary-1B (1B) | Parakeet + FastPitch + HiFiGAN |
+| **Languages** | English only | English only | Multilingual | English only |
+| **Use case** | Quick single file | Browse multiple files | Spanish/multilingual | Real-time voice agent |
+| **License** | Commercial OK | Commercial OK | Non-commercial only | Commercial OK |
+| **File selection** | Via argument | Interactive | Via argument | Live microphone |
+| **TTS Output** | None | None | None | Spoken audio response |
+| **LLM (Smart Mode)** | None | None | None | TinyLlama / Phi-3 |
 
 ---
 
@@ -321,9 +384,10 @@ python scenario3/transcribe.py audio.mp3 es
 1. **Use Scenario 1** for batch processing - it's the fastest for scripted workflows
 2. **Use Scenario 2** when you need to browse files interactively
 3. **Use Scenario 3** only when you need multilingual support (it's larger and slower)
-4. **GPU vs CPU**: GPU is ~10x faster than CPU mode
-5. **Audio length**: Keep files under 24 minutes (model limitation)
-6. **File format**: WAV is fastest (no conversion needed)
+4. **Use Scenario 5** for live voice interaction with ASR + TTS + optional LLM
+5. **GPU vs CPU**: GPU is ~10x faster than CPU mode
+6. **Audio length**: Keep files under 24 minutes (model limitation)
+7. **File format**: WAV is fastest (no conversion needed)
 
 ---
 
@@ -339,5 +403,15 @@ python scenario3/transcribe.py audio.mp3 es
 - **Commercial use**: ❌ Not allowed (non-commercial only)
 - **Attribution**: Required
 - **Use case**: Academic, research, personal projects
+
+### FastPitch + HiFi-GAN (Scenario 5 TTS)
+- **License**: CC-BY-4.0
+- **Commercial use**: ✅ Allowed
+- **Attribution**: Required
+
+### TinyLlama-1.1B-Chat (Scenario 5 Smart Mode)
+- **License**: Apache-2.0
+- **Commercial use**: ✅ Allowed
+- **Use case**: Lightweight conversational LLM for voice agent responses
 
 **Important**: If you need multilingual support for commercial projects, consider alternative models or contact NVIDIA for licensing options.

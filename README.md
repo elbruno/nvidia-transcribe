@@ -2,7 +2,7 @@
 
 > 🎙️ Demo repository for the **[Build a Voice-Enabled AI Agent in Minutes](https://developer.microsoft.com/en-us/reactor/events/26649/)** session at [Microsoft Reactor AI Apps & Agents Dev Days](https://developer.microsoft.com/en-us/reactor/series/s-1590/) (February 10, 2026). Brought to you by Microsoft & NVIDIA.
 
-Local audio transcription using NVIDIA ASR models via the NeMo framework, organized into four scenarios:
+Local audio transcription using NVIDIA ASR models via the NeMo framework, organized into five scenarios:
 
 | Scenario | Folder | Model | Use Case |
 |----------|--------|-------|----------|
@@ -10,6 +10,7 @@ Local audio transcription using NVIDIA ASR models via the NeMo framework, organi
 | **2. Interactive Menu** | [`scenario2/`](scenario2/) | Parakeet (English) | Browse and select from local audio files |
 | **3. Multilingual** | [`scenario3/`](scenario3/) | Canary-1B (Multilingual) | Spanish, English, German, French |
 | **4. Client-Server** | [`scenario4/`](scenario4/) | Parakeet + Canary | REST API, .NET Aspire, Blazor web app, NIM LLM integration |
+| **5. Voice Agent** | [`scenario5/`](scenario5/) | Parakeet + FastPitch + HiFiGAN + TinyLlama | Real-time voice agent with ASR, TTS, and Smart Mode LLM |
 
 ## Quick Start
 
@@ -27,6 +28,12 @@ python scenario3/transcribe.py audio.mp3 es
 
 # Scenario 4: Client-server
 cd scenario4/AppHost && dotnet run
+
+# Scenario 5: Voice Agent
+cd scenario5
+pip install -r requirements.txt
+python app.py
+# Open http://localhost:8000 in your browser
 ```
 
 ## Documentation
@@ -38,6 +45,7 @@ cd scenario4/AppHost && dotnet run
 | [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md) | Implementation details (Scenarios 1–3) |
 | [scenario4/README.md](scenario4/README.md) | Scenario 4 full documentation |
 | [scenario4/docs/](scenario4/docs/) | Architecture, deployment, testing guides |
+| [scenario5/README.md](scenario5/README.md) | Scenario 5 voice agent documentation |
 
 ## Requirements
 
@@ -58,4 +66,7 @@ The [`slides/`](slides/) folder contains visual references from the **Microsoft 
 - [NVIDIA Parakeet Model](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) — English, CC-BY-4.0
 - [NVIDIA Canary-1B Model](https://huggingface.co/nvidia/canary-1b) — Multilingual, CC-BY-NC-4.0
 - [NeMo ASR Documentation](https://docs.nvidia.com/nemo-framework/user-guide/latest/nemotoolkit/asr/models.html)
+- [NVIDIA FastPitch Model](https://huggingface.co/nvidia/tts_en_fastpitch) — English TTS, CC-BY-4.0
+- [NVIDIA HiFi-GAN Model](https://huggingface.co/nvidia/tts_en_hifigan) — Vocoder, CC-BY-4.0
+- [TinyLlama-1.1B-Chat](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) — LLM for Smart Mode, Apache-2.0
 - [Azure Deployment Example](https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr)

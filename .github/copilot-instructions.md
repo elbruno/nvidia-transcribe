@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This toolkit provides local audio transcription using NVIDIA ASR models via the NeMo framework. It offers four scenarios with shared patterns for different use cases.
+This toolkit provides local audio transcription using NVIDIA ASR models via the NeMo framework. It offers five scenarios with shared patterns for different use cases.
 
 ## Repository Structure
 
@@ -65,6 +65,15 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 │       ├── IMPLEMENTATION_SUMMARY.md
 │       ├── IMPLEMENTATION_SUMMARY_SCENARIO4_ENHANCEMENTS.md
 │       └── OPTION2_IMPLEMENTATION.md
+├── scenario5/                  # Voice Agent (ASR + TTS + LLM)
+│   ├── app.py                 # FastAPI server with WebSocket
+│   ├── requirements.txt       # Scenario-specific dependencies
+│   ├── README.md
+│   ├── static/
+│   │   └── index.html         # Browser-based voice UI
+│   └── pynini_stub/           # Windows TTS compatibility
+│       ├── setup.py
+│       └── pynini/__init__.py
 └── output/                     # Shared output directory
 ```
 
@@ -86,6 +95,7 @@ This toolkit provides local audio transcription using NVIDIA ASR models via the 
 | `scenario2/` | Parakeet (English) | Interactive menu to select from local audio files |
 | `scenario3/` | Canary-1B (Multilingual) | Language-specific transcription (es, en, de, fr) |
 | `scenario4/` | Parakeet + Canary | Client-server architecture with REST API, .NET Aspire orchestration |
+| `scenario5/` | Parakeet + FastPitch + HiFiGAN + TinyLlama | Real-time voice agent with ASR, TTS, and Smart Mode LLM |
 
 Root `transcribe.py` is the original script (same as scenario2) - kept for backward compatibility.
 
@@ -148,6 +158,16 @@ When extending the client-server architecture:
 4. **Docker**: Maintain multi-stage builds with CUDA support
 5. **Azure**: Use Container Apps for serverless deployment
 
+### Scenario 5 (Voice Agent) Patterns
+
+When extending the voice agent:
+1. **Server**: FastAPI + WebSocket for real-time audio streaming
+2. **Models**: Lazy-loaded via `get_asr_model()`, `get_tts_models()`, `get_llm()` singletons
+3. **Pipeline**: Audio in → ASR → (optional LLM) → TTS → Audio out
+4. **Logs**: Broadcast via `/ws/logs` WebSocket for real-time monitoring
+5. **Windows**: Use `pynini_stub/` to bypass pynini C++ dependency for NeMo TTS
+6. **Dependencies**: Scenario 5 has its own `requirements.txt` (needs `nemo_toolkit[asr,tts]`, `transformers`, `bitsandbytes`)
+
 **Server Pattern:**
 ```python
 @app.post("/endpoint")
@@ -184,6 +204,12 @@ No formal test suite. Manual testing:
 python scenario1/transcribe.py test_short.mp3
 python scenario2/transcribe.py  # Select from menu
 python scenario3/transcribe.py test_short.mp3 en
+```
+
+Scenario 5 testing:
+```bash
+cd scenario5
+python app.py  # Open http://localhost:8000 and use the voice UI
 ```
 
 Outputs appear in `output/` directory with `.txt` and `.srt` files.

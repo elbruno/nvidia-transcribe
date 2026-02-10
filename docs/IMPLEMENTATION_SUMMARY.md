@@ -1,6 +1,6 @@
 # Implementation Summary
 
-> **Note**: This document covers the v2.0 implementation (Scenarios 1–3 only). For Scenario 4 (client-server architecture), see [`scenario4/docs/`](../scenario4/docs/).
+> **Note**: This document covers the v2.0 implementation (Scenarios 1–3) and the v3.0 addition of Scenario 5. For Scenario 4 (client-server architecture), see [`scenario4/docs/`](../scenario4/docs/).
 
 ## Objective
 Reorganize the NVIDIA ASR transcription repository into a structured multi-scenario toolkit with multilingual support.
@@ -68,6 +68,31 @@ python scenario3/transcribe.py --help
 
 ---
 
+### 4. Scenario 5: Voice Agent
+**File**: `scenario5/app.py`
+
+**Features**:
+- Real-time voice agent using WebSocket (browser-based)
+- ASR via Parakeet TDT 0.6B v2 (speech-to-text)
+- TTS via FastPitch + HiFi-GAN (text-to-speech)
+- Optional Smart Mode with local LLM (TinyLlama-1.1B-Chat, 4-bit quantization)
+- Hold-to-talk browser UI with chat history
+- Real-time server log streaming via WebSocket
+- pynini stub for Windows TTS compatibility
+
+**Usage**:
+```bash
+cd scenario5
+pip install -r requirements.txt
+pip install pynini_stub/    # Windows only
+python app.py
+# Open http://localhost:8000
+```
+
+**Best for**: Live voice interaction demos, real-time ASR + TTS pipelines
+
+---
+
 ## Documentation Created
 
 ### README.md
@@ -127,6 +152,19 @@ python scenario3/transcribe.py --help
 - **Size**: ~1.5GB download
 - **Use case**: Multilingual transcription, Spanish content
 
+### FastPitch + HiFi-GAN (Scenario 5 TTS)
+- **Type**: Text-to-Speech (spectrogram generator + vocoder)
+- **Language**: English
+- **License**: CC-BY-4.0 (commercial use allowed)
+- **Size**: ~100MB combined
+- **Use case**: Real-time speech synthesis for voice agent
+
+### TinyLlama-1.1B-Chat (Scenario 5 Smart Mode)
+- **Parameters**: 1.1B (4-bit quantized)
+- **License**: Apache-2.0 (commercial use allowed)
+- **Size**: ~700MB (4-bit)
+- **Use case**: Lightweight conversational LLM for generating spoken responses
+
 ---
 
 ## Backward Compatibility
@@ -163,6 +201,15 @@ python scenario3/transcribe.py --help
 ├── scenario3/                  # Scenario 3: Multilingual
 │   ├── transcribe.py
 │   └── README.md
+├── scenario5/                  # Scenario 5: Voice Agent
+│   ├── app.py                 # FastAPI server (ASR + TTS + LLM)
+│   ├── requirements.txt       # Scenario-specific dependencies
+│   ├── README.md
+│   ├── static/
+│   │   └── index.html         # Browser UI
+│   └── pynini_stub/           # Windows TTS compatibility
+│       ├── setup.py
+│       └── pynini/__init__.py
 └── output/                     # Generated transcripts
     ├── *.txt                   # Transcription files
     └── *.srt                   # Subtitle files
@@ -195,4 +242,5 @@ The repository is now well-organized, documented, and ready for use with three d
 
 ## Version
 
+**v3.0** - Voice Agent scenario (Scenario 5) added (February 2026)  
 **v2.0** - Multi-scenario implementation (February 2026)
