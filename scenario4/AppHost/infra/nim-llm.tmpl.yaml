@@ -12,6 +12,9 @@ properties:
     runtime:
       dotnet:
         autoConfigureDataProtection: true
+    secrets:
+      - name: ngc-api-key
+        value: {{ .Env.NGC_API_KEY }}
     ingress:
       external: false
       targetPort: 8000
@@ -20,6 +23,9 @@ properties:
     registries:
       - server: {{ .Env.AZURE_CONTAINER_REGISTRY_ENDPOINT }}
         identity: {{ .Env.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID }}
+      - server: nvcr.io
+        username: "$oauthtoken"
+        passwordSecretRef: ngc-api-key
   template:
     volumes:
       - name: nim-llm-nimmodelcache
@@ -32,7 +38,7 @@ properties:
           - name: AZURE_CLIENT_ID
             value: {{ .Env.MANAGED_IDENTITY_CLIENT_ID }}
           - name: NGC_API_KEY
-            value: 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
+            secretRef: ngc-api-key
           - name: NIM_MAX_MODEL_LEN
             value: "8192"
         volumeMounts:
