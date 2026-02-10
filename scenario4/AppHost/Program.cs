@@ -21,7 +21,7 @@ else
 // NOTE: GPU access requires NVIDIA Container Toolkit on host - see GPU_SETUP_GUIDE.md
 var apiServer = builder.AddDockerfile("apiserver", "../server")
     .WithImageTag("latest")  // Reuse cached image if unchanged
-    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "http", isProxied: false)
+    .WithHttpEndpoint(targetPort: 8000, name: "http")
     .WithHttpHealthCheck("/health")
     .WithEnvironment("PYTHONUNBUFFERED", "1")  // For real-time logging
     .WithEnvironment("HF_HOME", "/root/.cache/huggingface")  // Hugging Face cache location
@@ -38,7 +38,7 @@ var nimModelImage = builder.Configuration["NIM_IMAGE"]
     ?? "nvcr.io/nim/meta/llama-3.2-3b-instruct";
 
 var nimLlm = builder.AddContainer("nim-llm", nimModelImage, "latest")
-    .WithHttpEndpoint(port: 8001, targetPort: 8000, name: "http", isProxied: false)
+    .WithHttpEndpoint(targetPort: 8000, name: "http")
     .WithHttpHealthCheck("/v1/health/ready")
     .WithEnvironment("NGC_API_KEY", builder.Configuration["NGC_API_KEY"] ?? "")
     .WithEnvironment("NIM_MAX_MODEL_LEN", "8192")  // Limit context length to fit in GPU VRAM
