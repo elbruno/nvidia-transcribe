@@ -36,6 +36,25 @@ A real-time, full-duplex voice conversation web app powered by **NVIDIA PersonaP
 
 ## Setup
 
+### Quickstart (Automated)
+
+```bash
+# 1) Install system dependencies (see below for your OS)
+
+# 2) Run the bootstrap script (creates venv, installs deps, copies .env)
+python scenario6/setup_scenario6.py
+
+# Optional: write your Hugging Face token directly into .env
+# python scenario6/setup_scenario6.py --hf-token hf_your_token_here
+```
+
+Next steps:
+1. Set `HF_TOKEN` in `scenario6/.env` (if you did not pass `--hf-token`).
+2. Accept the model license: https://huggingface.co/nvidia/personaplex-7b-v1
+3. Run: `python scenario6/app.py`
+
+For the full manual walkthrough and troubleshooting, see [scenario6/docs/USER_MANUAL.md](scenario6/docs/USER_MANUAL.md).
+
 ### 1. Install System Dependencies
 
 ```bash

@@ -6,14 +6,15 @@ This guide walks you through setting up and using the PersonaPlex Voice Conversa
 
 1. [Overview](#overview)
 2. [System Requirements](#system-requirements)
-3. [Step-by-Step Setup](#step-by-step-setup)
-4. [Configuring the Environment](#configuring-the-environment)
-5. [Running the Application](#running-the-application)
-6. [Using the Web Interface](#using-the-web-interface)
-7. [Customizing Voice and Persona](#customizing-voice-and-persona)
-8. [Theme System](#theme-system)
-9. [Loading a Local Model](#loading-a-local-model)
-10. [Troubleshooting](#troubleshooting)
+3. [Automated Setup (Recommended)](#automated-setup-recommended)
+4. [Step-by-Step Setup](#step-by-step-setup)
+5. [Configuring the Environment](#configuring-the-environment)
+6. [Running the Application](#running-the-application)
+7. [Using the Web Interface](#using-the-web-interface)
+8. [Customizing Voice and Persona](#customizing-voice-and-persona)
+9. [Theme System](#theme-system)
+10. [Loading a Local Model](#loading-a-local-model)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -39,6 +40,28 @@ The application consists of two components:
 | CUDA | 11.8+ | 12.1+ |
 
 > **Note**: Python 3.13 is NOT supported by the moshi package.
+
+---
+
+## Automated Setup (Recommended)
+
+If you want a faster setup, use the bootstrap script from the repo root:
+
+```bash
+python scenario6/setup_scenario6.py
+```
+
+Optional: write your Hugging Face token directly to `.env`:
+
+```bash
+python scenario6/setup_scenario6.py --hf-token hf_your_token_here
+```
+
+After it completes:
+1. Accept the model license at https://huggingface.co/nvidia/personaplex-7b-v1
+2. Run: `python scenario6/app.py`
+
+If you prefer the full manual steps, continue below.
 
 ---
 
