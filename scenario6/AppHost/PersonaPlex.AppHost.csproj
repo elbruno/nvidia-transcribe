@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>PersonaPlex.AppHost</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsAspireHost>true</IsAspireHost>
+    <NoWarn>$(NoWarn);ASPIREHOSTINGPYTHON001;NETSDK1228</NoWarn>
+    <EnableAspireWorkloadDeprecationWarning>false</EnableAspireWorkloadDeprecationWarning>
+    <AssemblyTitle>PersonaPlex Voice (Scenario 6)</AssemblyTitle>
+    <UserSecretsId>f2b0a2af-92b2-4a37-87c7-55b0a66f17fe</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.0" />
+  </ItemGroup>
+
+</Project>

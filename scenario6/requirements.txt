@@ -1,10 +1,11 @@
 # Scenario 6 — PersonaPlex Real-Time Voice Conversation
 # Install PyTorch with CUDA first:
 #   pip install torch --index-url https://download.pytorch.org/whl/cu121
-# Then install the moshi package from the PersonaPlex repo:
-#   git clone https://github.com/NVIDIA/personaplex.git /tmp/personaplex
-#   pip install /tmp/personaplex/moshi/.
+# Then install the vendored moshi package:
+#   pip install -e ./third_party/moshi
 # Then install these remaining dependencies:
+
+-e ./third_party/moshi
 
 fastapi
 uvicorn[standard]

@@ -36,6 +36,20 @@ A real-time, full-duplex voice conversation web app powered by **NVIDIA PersonaP
 
 ## Setup
 
+### Aspire Quickstart (Recommended)
+
+Run the full stack with one command from the AppHost directory:
+
+```bash
+cd scenario6/AppHost
+aspire run
+```
+
+First run notes:
+- Expect a large model download (~14 GB) on first startup.
+- The moshi backend uses HTTPS/WSS with a self-signed cert (see Quick Start below).
+- The Aspire dashboard shows logs, health, and endpoints for both services.
+
 ### Quickstart (Automated)
 
 > **Do I need to create a venv first?**
@@ -95,20 +109,11 @@ git clone https://github.com/microsoft/vcpkg $env:USERPROFILE\vcpkg
 & $env:USERPROFILE\vcpkg\vcpkg.exe install opus:x64-windows
 ```
 
-### 2. Clone and Install PersonaPlex Moshi Package
+### 2. Install PersonaPlex Moshi Package (Vendored)
 
 ```bash
-# Clone the PersonaPlex repo (contains the moshi server)
-git clone https://github.com/NVIDIA/personaplex.git /tmp/personaplex
-
-# Windows example
-git clone https://github.com/NVIDIA/personaplex.git $env:TEMP\personaplex
-
-# Install the moshi package
-pip install /tmp/personaplex/moshi/.
-
-# Windows example
-pip install $env:TEMP\personaplex\moshi\.
+# Install the vendored moshi package
+pip install -e scenario6/third_party/moshi
 ```
 
 ### 3. Install Scenario 6 Dependencies
@@ -158,19 +163,47 @@ Visit [nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1
 python scenario6/app.py
 ```
 
-This starts two servers:
-1. **Web UI** at [http://localhost:8010](http://localhost:8010) — the voice conversation interface
-2. **Moshi Backend** at `https://localhost:8998` — the PersonaPlex speech-to-speech engine
+This starts the **Web UI** at [http://localhost:8010](http://localhost:8010).
+
+Start the moshi backend separately:
+
+```bash
+mkdir -p ssl
+python -m moshi.server --ssl ./ssl --port 8998
+```
 
 > **First launch**: The model (~14 GB) will be automatically downloaded and cached. Subsequent starts use the cached model.
 
 ### Quick Start
 
-1. Open [http://localhost:8010](http://localhost:8010)
-2. Accept the self-signed SSL certificate by visiting `https://localhost:8998` in your browser
-3. Click **Connect** to establish the WebSocket connection to the moshi backend
-4. Press and hold the **Talk** button to speak
-5. Release the button — PersonaPlex processes and responds with voice
+1. Start the moshi backend (see above)
+2. Open [http://localhost:8010](http://localhost:8010)
+3. Accept the self-signed SSL certificate by visiting `https://localhost:8998` in your browser
+4. Click **Connect** to establish the WebSocket connection to the moshi backend
+5. Press and hold the **Talk** button to speak
+6. Release the button — PersonaPlex processes and responds with voice
+
+### Preflight Checklist (New Users)
+
+- Python 3.10-3.12 installed (3.12 recommended)
+- GPU drivers + CUDA installed (if using GPU)
+- Hugging Face token and license acceptance
+- 20+ GB free disk space for model cache
+- Ports 8010/8998 available (or override via env vars)
+
+### Certificate Handling
+
+- When moshi runs with `--ssl`, the browser must trust the self-signed cert.
+- Visit `https://<moshi-host>:<moshi-port>` once to accept the certificate.
+- If you run moshi without SSL, set `MOSHI_WS_SCHEME=ws` or `MOSHI_WS_URL=ws://host:port`.
+
+### Port and Host Overrides
+
+Use these environment variables when running behind a VPN, proxy, or custom ports:
+
+- `MOSHI_HOST`, `MOSHI_PORT`
+- `MOSHI_WS_SCHEME` or `MOSHI_WS_URL`
+- `APP_HOST`, `APP_PORT`
 
 ### Voice Selection
 
@@ -213,11 +246,20 @@ All configuration is in `scenario6/.env` (copy from `.env.example`):
 | `PERSONAPLEX_MODEL_PATH` | *(empty)* | Local model directory path |
 | `HF_HOME` | `~/.cache/huggingface/hub` | HuggingFace cache directory |
 | `APP_PORT` | `8010` | Web UI server port |
-| `MOSHI_PORT` | `8998` | Moshi backend server port |
+| `MOSHI_HOST` | `localhost` | Moshi backend host |
+| `MOSHI_PORT` | `8998` | Moshi backend port |
+| `MOSHI_WS_SCHEME` | `wss` | Moshi WebSocket scheme (`ws` or `wss`) |
+| `MOSHI_WS_URL` | *(empty)* | Full Moshi WebSocket URL (overrides host/port) |
 | `APP_HOST` | `0.0.0.0` | Web server bind address |
 | `DEFAULT_VOICE` | `NATF2` | Default voice prompt |
 | `DEFAULT_PERSONA` | *teacher prompt* | Default persona text |
 | `CPU_OFFLOAD` | `false` | Enable CPU offloading for low VRAM |
+| `USE_GPU` | `true` | Enable GPU passthrough for moshi when using Aspire |
+
+### Service Discovery
+
+- `GET /health` - basic service health and backend host/port
+- `GET /api/info` - backend WebSocket URL and moshi version (if available)
 
 ## Architecture
 
@@ -227,18 +269,17 @@ Browser (http://localhost:8010)
         │  Fetch /api/config (voices, personas, settings)
         │  WebSocket /ws/logs (real-time log streaming)
         │
-    FastAPI Server (app.py, port 8010)
-        │  Manages moshi subprocess lifecycle
-        │  Serves web UI and configuration API
-        │
-        ├── Moshi Backend (port 8998, HTTPS)
-        │   └── PersonaPlex-7B-v1 (full-duplex speech-to-speech)
-        │       ├── Audio Input  → Speech Understanding
-        │       ├── LLM Backbone → Response Generation
-        │       └── Audio Output → Speech Synthesis
-        │
+   FastAPI Server (app.py, port 8010)
+      │  Serves web UI and configuration API
+      │
+      ├── Moshi Backend (port 8998, HTTPS/WSS)
+      │   └── PersonaPlex-7B-v1 (full-duplex speech-to-speech)
+      │       ├── Audio Input  → Speech Understanding
+      │       ├── LLM Backbone → Response Generation
+      │       └── Audio Output → Speech Synthesis
+      │
 Browser ←──── WSS connection to moshi backend
-              (full-duplex audio streaming)
+           (full-duplex audio streaming)
 ```
 
 ## Project Structure
@@ -269,6 +310,14 @@ scenario6/
 | Slow on CPU | GPU is strongly recommended; CPU mode will be very slow |
 | Model download is slow | First download is ~14 GB. Set `HF_HOME` to a fast drive |
 | Port already in use | Change `APP_PORT` or `MOSHI_PORT` in `.env` |
+
+### Aspire Common Blockers
+
+| Problem | Fix |
+|---------|-----|
+| Docker not running | Start Docker Desktop/Engine and re-run `aspire run` |
+| GPU not detected in container | Install NVIDIA Container Toolkit and set `USE_GPU=true` |
+| Moshi TLS warnings in browser | Visit the moshi HTTPS URL and accept the self-signed certificate |
 
 ## License
 

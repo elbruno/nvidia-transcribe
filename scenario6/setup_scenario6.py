@@ -9,10 +9,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import tempfile
 
 TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu121"
-PERSONAPLEX_REPO = "https://github.com/NVIDIA/personaplex.git"
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
@@ -77,7 +75,6 @@ def main() -> int:
     parser.add_argument("--skip-torch", action="store_true", help="Skip installing PyTorch")
     parser.add_argument("--skip-moshi", action="store_true", help="Skip installing moshi package")
     parser.add_argument("--skip-requirements", action="store_true", help="Skip installing requirements.txt")
-    parser.add_argument("--keep-clone", action="store_true", help="Keep the temporary personaplex clone")
     parser.add_argument("--hf-token", help="Optional Hugging Face token to write into .env")
     parser.add_argument("--in-venv", action="store_true", help=argparse.SUPPRESS)
 
@@ -104,30 +101,23 @@ def main() -> int:
         if not in_venv():
             return 0
 
-    if not shutil.which("git"):
-        print("git is required to install the moshi package. Please install git and re-run.")
-        return 1
-
     repair_pip()
 
     if not args.skip_torch:
         run([sys.executable, "-m", "pip", "install", "torch", "--index-url", TORCH_INDEX_URL])
 
-    temp_dir = None
-    try:
-        if not args.skip_moshi:
-            temp_dir = Path(tempfile.mkdtemp(prefix="personaplex-"))
-            repo_dir = temp_dir / "personaplex"
-            run(["git", "clone", PERSONAPLEX_REPO, str(repo_dir)])
-            run([sys.executable, "-m", "pip", "install", str(repo_dir / "moshi" / ".")])
+    if not args.skip_moshi:
+        moshi_dir = scenario_dir / "third_party" / "moshi"
+        if not moshi_dir.is_dir():
+            print("Vendored moshi package not found at scenario6/third_party/moshi.")
+            print("Run the vendor update script or re-clone the repository.")
+            return 1
+        run([sys.executable, "-m", "pip", "install", "-e", str(moshi_dir)])
 
-        if not args.skip_requirements:
-            run([sys.executable, "-m", "pip", "install", "-r", str(scenario_dir / "requirements.txt")])
+    if not args.skip_requirements:
+        run([sys.executable, "-m", "pip", "install", "-r", str(scenario_dir / "requirements.txt")])
 
-        ensure_env_file(env_example, env_file, args.hf_token)
-    finally:
-        if temp_dir and not args.keep_clone:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+    ensure_env_file(env_example, env_file, args.hf_token)
 
     print("Setup complete.")
     print("Next steps:")

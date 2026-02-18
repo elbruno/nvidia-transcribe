@@ -26,7 +26,7 @@
     var $logWipe    = document.getElementById('logWipe');
     var $wipeChat   = document.getElementById('wipeChatBtn');
     var $link       = document.getElementById('linkBtn');
-    var $bkRestart  = document.getElementById('bkRestart');
+    var $backendHint = document.getElementById('backendHint');
     var $voicePick  = document.getElementById('voicePick');
     var $persona    = document.getElementById('personaField');
     var $chipRow    = document.getElementById('chipRow');
@@ -60,7 +60,11 @@
     function fetchConfig() {
         fetch('/api/config').then(function (r) { return r.json(); }).then(function (c) {
             cfg = c;
-            if ($portHint) $portHint.textContent = c.moshi_port || '8998';
+            var host = c.moshi_host || location.hostname || 'localhost';
+            var port = c.moshi_port || 8998;
+            var scheme = c.moshi_ws_scheme || 'wss';
+            var wsUrl = c.moshi_ws_url || (scheme + '://' + host + ':' + port);
+            if ($backendHint) $backendHint.textContent = wsUrl;
 
             // voices
             $voicePick.innerHTML = '';
@@ -94,23 +98,14 @@
             }
             $persona.value = c.default_persona || '';
 
-            $bk.textContent = c.moshi_backend_running ? 'Running' : 'Stopped';
-            $bk.className   = 'conn-pill ' + (c.moshi_backend_running ? 'ok' : 'disc');
+            var statusText = c.moshi_backend_status || (c.moshi_backend_running === true ? 'Running' : c.moshi_backend_running === false ? 'Stopped' : 'External');
+            var statusClass = c.moshi_backend_running === true ? 'ok' : c.moshi_backend_running === false ? 'disc' : 'wait';
+            $bk.textContent = statusText;
+            $bk.className   = 'conn-pill ' + statusClass;
             clog('Config loaded');
         }).catch(function (e) { clog('Config error: ' + e.message); });
     }
     fetchConfig();
-
-    /* ==================================================================
-       Backend restart
-       ================================================================== */
-    $bkRestart.addEventListener('click', function () {
-        clog('Restarting backend…');
-        $bk.textContent = 'Restarting'; $bk.className = 'conn-pill wait';
-        fetch('/api/restart-backend', { method: 'POST' })
-            .then(function () { clog('Restart requested'); setTimeout(fetchConfig, 5000); })
-            .catch(function (e) { clog('Restart failed: ' + e.message); });
-    });
 
     /* ==================================================================
        Moshi WebSocket
@@ -121,8 +116,10 @@
     });
 
     function openMoshi() {
+        var host = cfg.moshi_host || location.hostname || 'localhost';
         var port = cfg.moshi_port || 8998;
-        var url  = 'wss://localhost:' + port;
+        var scheme = cfg.moshi_ws_scheme || 'wss';
+        var url = cfg.moshi_ws_url || (scheme + '://' + host + ':' + port);
         clog('Connecting → ' + url);
         $conn.textContent = 'Connecting'; $conn.className = 'conn-pill wait';
         $link.textContent = 'Connecting…';
@@ -149,7 +146,8 @@
             clog('WS error — backend running?');
             $conn.textContent = 'Error'; $conn.className = 'conn-pill disc';
             $link.textContent = 'Connect';
-            pushBubble('s', '⚠️ Cannot reach moshi backend. Accept the self-signed cert by visiting https://localhost:' + (cfg.moshi_port || 8998) + ' first.');
+            var httpsUrl = 'https://' + host + ':' + port;
+            pushBubble('s', '⚠️ Cannot reach moshi backend. Accept the self-signed cert by visiting ' + httpsUrl + ' first.');
         };
         moshiSock.onmessage = function (ev) {
             if (ev.data instanceof ArrayBuffer) {
