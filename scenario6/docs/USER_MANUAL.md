@@ -5,23 +5,109 @@ This guide walks you through setting up and using the PersonaPlex Voice Conversa
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [System Requirements](#system-requirements)
-3. [Aspire Quickstart (Recommended)](#aspire-quickstart-recommended)
-4. [Preflight Checklist](#preflight-checklist)
-5. [Automated Setup (Recommended)](#automated-setup-recommended)
-6. [Step-by-Step Setup](#step-by-step-setup)
-7. [Configuring the Environment](#configuring-the-environment)
-8. [Running the Application](#running-the-application)
-9. [First-Run Verification](#first-run-verification)
-10. [Using the Web Interface](#using-the-web-interface)
-11. [Customizing Voice and Persona](#customizing-voice-and-persona)
-12. [Theme System](#theme-system)
-13. [Loading a Local Model](#loading-a-local-model)
-14. [Troubleshooting](#troubleshooting)
+2. [How It Works](#how-it-works)
+3. [System Requirements](#system-requirements)
+4. [Aspire Quickstart (Recommended)](#aspire-quickstart-recommended)
+5. [Preflight Checklist](#preflight-checklist)
+6. [Automated Setup (Recommended)](#automated-setup-recommended)
+7. [Step-by-Step Setup](#step-by-step-setup)
+8. [Configuring the Environment](#configuring-the-environment)
+9. [Running the Application](#running-the-application)
+10. [First-Run Verification](#first-run-verification)
+11. [Using the Web Interface](#using-the-web-interface)
+12. [Customizing Voice and Persona](#customizing-voice-and-persona)
+13. [Theme System](#theme-system)
+14. [Loading a Local Model](#loading-a-local-model)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
+
+PersonaPlex Voice Conversation is a real-time, full-duplex voice AI application. Unlike traditional voice assistants that listen, think, then speak sequentially, PersonaPlex can listen and speak simultaneously — creating natural, flowing conversations just like talking on the phone.
+
+The application consists of two components:
+- **Web UI** (FastAPI, port 8010) — the browser interface you interact with
+- **Moshi Backend** (port 8998) — the NVIDIA PersonaPlex speech-to-speech engine
+
+---
+
+## How It Works
+
+Understanding the internals helps you troubleshoot and extend the app.
+
+### Component Overview
+
+```
+Browser (https://localhost:8010)
+        │
+        │  GET  /api/config  → voices, personas, defaults
+        │  WS   /ws/logs     → real-time server log streaming
+        │  WS   /proxy/moshi → same-origin WebSocket proxy
+        │
+   FastAPI Server (app.py) — port 8010
+        │
+        └── Moshi Backend (port 8998, HTTPS/WSS)
+            └── PersonaPlex-7B-v1 — full-duplex speech-to-speech
+                ├── Audio input  → speech understanding
+                ├── LLM backbone → response generation
+                └── Audio output → speech synthesis
+```
+
+### The WebSocket Proxy (`/proxy/moshi`)
+
+The browser page is served over HTTPS. The moshi backend uses a self-signed certificate on its own port (8998). A direct browser → moshi WebSocket would be blocked as a mixed-content request (or require the user to manually trust that certificate every run).
+
+The solution: the FastAPI server exposes **`/proxy/moshi`** — a same-origin WebSocket endpoint. When the browser connects to it, the server opens a server-side WebSocket to moshi and relays raw binary frames in both directions:
+
+```
+Browser ──WS──► /proxy/moshi (FastAPI, same origin)
+                     │
+                     └──WS──► ws(s)://moshi-host:8998/api/chat
+```
+
+Because the proxy is on the same origin as the page, no mixed-content block occurs. The `voice_prompt` and `text_prompt` query parameters are forwarded to moshi when the proxy connection is opened.
+
+### Connection State Machine
+
+On page load, `fetchConfig()` automatically calls `openMoshi()`, so there is no manual Connect step.
+
+| State | What's happening |
+|-------|-----------------|
+| **Connecting** | Browser WebSocket to `/proxy/moshi` is being opened |
+| **Warming up…** | Proxy is open; waiting for the moshi `\x00` handshake byte |
+| **Live** | Handshake received — model is ready, microphone enabled |
+| **Disconnected** | Session closed; auto-reconnects after 4 s (unless user closed with code 1000) |
+| **Error** | Proxy failed to reach moshi backend |
+
+### Handshake Gate
+
+PersonaPlex sends a single `\x00` byte once the model has finished loading. The client-side code treats this as the "ready" signal:
+
+- Before the handshake: **Start** button is disabled (`off` class)
+- After the handshake: button is enabled, microphone can be opened
+
+This prevents sending audio before the model is ready, which would cause an immediate disconnect.
+
+### Audio Pipeline
+
+**Microphone → moshi:**
+1. `navigator.mediaDevices.getUserMedia({ audio: true })` opens the mic
+2. `MediaRecorder` encodes audio as Opus (preferring `audio/ogg;codecs=opus`, falling back to `audio/webm;codecs=opus`)
+3. Chunks arrive every 100 ms and are framed: `[0x01][opus bytes…]` → sent over the proxy WS
+
+**Moshi → speaker:**
+1. Binary frames arrive with kind byte `0x01` = Opus audio, `0x02` = text token
+2. Audio frames are decoded via `AudioContext.decodeAudioData` and scheduled onto a gapless playback queue (`nextPlayAt` pointer)
+3. Text tokens are accumulated and displayed as `🧠` chat bubbles after a 600 ms debounce
+
+### Auto-Reconnect
+
+If the connection drops unexpectedly (close code ≠ 1000/1001), the client schedules `openMoshi()` again after 4 seconds. This handles transient network issues or moshi restarts without requiring page reload.
+
+---
+
+## System Requirements
 
 PersonaPlex Voice Conversation is a real-time, full-duplex voice AI application. Unlike traditional voice assistants that listen, think, then speak sequentially, PersonaPlex can listen and speak simultaneously — creating natural, flowing conversations just like talking on the phone.
 
@@ -243,20 +329,12 @@ python -m moshi.server --ssl ./ssl --port 8998
 
 1. Start the moshi backend (see above)
 2. Open the web UI at http://localhost:8010
-3. Visit https://localhost:8998 to accept the self-signed certificate
-4. Click **Connect** and confirm the status turns green
-5. Press and hold **Talk**, speak briefly, then release
-6. Confirm audio response plays back in the browser
+3. The app **auto-connects** — watch the status badge change to *Warming up…*
+4. Wait for the status badge to turn green (**Live**) — this means the model finished loading
+5. Click **Start** and speak naturally; audio plays back in real-time
+6. Click **Stop** to end the session
 
-### First Launch
-
-On the first launch, the application will:
-1. Start the web UI server on port 8010
-2. Start the moshi backend on port 8998
-3. Download the PersonaPlex-7B-v1 model (~14 GB) from HuggingFace
-4. Cache the model locally for future use
-
-> **Tip**: The download may take 10–30 minutes depending on your internet speed. Subsequent launches will be much faster.
+> **Note**: The first launch downloads the PersonaPlex model (~14 GB). Subsequent launches are fast because the model is cached.
 
 ---
 
@@ -289,23 +367,31 @@ Before connecting, you need to accept the moshi backend's self-signed SSL certif
 
 ### Connecting to the Backend
 
-1. Click the **Connect** button in the bottom-right of the chat area
-2. The status badge will change from "Disconnected" to "Connected" (green)
-3. A system message "🟢 Connected — start speaking!" appears
+The app **connects automatically** when the page loads — no manual Connect click is needed.
 
-<!-- Screenshot: Connected state with green status badge -->
-*The status badge turns green when successfully connected.*
+Connection states:
+
+| Badge | Meaning |
+|-------|---------|
+| Waiting | Page just loaded, starting connection |
+| Connecting | Establishing proxy WebSocket |
+| Warming up… | Proxy open; moshi model is loading |
+| **Live** (green) | Model ready; microphone enabled |
+| Disconnected | Session ended; auto-reconnects in 4 s |
+
+If you need to reconnect manually, click the **Reconnect** button that appears when disconnected.
 
 ### Having a Conversation
 
-1. **Press and hold** the green Talk button
-2. **Speak** into your microphone
-3. **Release** the button to send your audio
-4. PersonaPlex processes your speech and responds with audio
-5. The response plays automatically in your browser
+1. Wait for the status badge to show **Live** (green)
+2. **Click Start** — the button turns active and microphone capture begins
+3. **Speak naturally** — PersonaPlex listens and responds simultaneously (full-duplex)
+4. **Click Stop** to end the session
+
+> The connection is **persistent and full-duplex**: PersonaPlex can speak while you speak, just like a phone call. There is no hold-to-talk, no push-to-talk — once you click Start, the session is live.
 
 <!-- Screenshot: Active conversation with user and agent messages -->
-*Messages appear as chat bubbles — green for you, blue for PersonaPlex.*
+*Messages appear as chat bubbles. Text tokens from the model appear as "🧠" bubbles.*
 
 ---
 

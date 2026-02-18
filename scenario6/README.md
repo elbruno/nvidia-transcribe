@@ -218,9 +218,12 @@ Then open [http://localhost:8010](http://localhost:8010).
 1. **Open the Web UI** at [http://localhost:8010](http://localhost:8010)
 2. **Select a voice** from the left sidebar (default: NATF2 — female, natural)
 3. **Choose a persona** (default: teacher) or write your own
-4. **Press and hold the Talk button** to speak
-5. **Release** — PersonaPlex listens and responds with voice
-6. **Listen** — Audio plays in real-time
+4. **Wait** — the app auto-connects to the backend on load (status: *Warming up…*)
+5. **Watch for green** — when status turns **Live** the model is ready
+6. **Click Start** — begins a full-duplex audio session; speak naturally and listen simultaneously
+7. **Click Stop** (or the same button) to end the session
+
+> **Tip**: There is no need to hold anything — the connection is persistent and full-duplex. The button is a simple toggle.
 
 ### Dashboard (Aspire Only)
 
@@ -308,21 +311,38 @@ All configuration is in `scenario6/.env` (copy from `.env.example`):
 ```
 Browser (http://localhost:8010)
         │
-        │  Fetch /api/config (voices, personas, settings)
-        │  WebSocket /ws/logs (real-time log streaming)
+        │  GET  /api/config  (voices, personas, settings)
+        │  WS   /ws/logs     (real-time log streaming)
+        │  WS   /proxy/moshi (same-origin WebSocket proxy)
         │
    FastAPI Server (app.py, port 8010)
-      │  Serves web UI and configuration API
+      │  • Serves web UI and configuration API
+      │  • Proxies browser WS → moshi backend (solves mixed-content)
+      │  • Auto-connects on page load via /proxy/moshi
       │
-      ├── Moshi Backend (port 8998, HTTPS/WSS)
-      │   └── PersonaPlex-7B-v1 (full-duplex speech-to-speech)
-      │       ├── Audio Input  → Speech Understanding
-      │       ├── LLM Backbone → Response Generation
-      │       └── Audio Output → Speech Synthesis
-      │
-Browser ←──── WSS connection to moshi backend
-           (full-duplex audio streaming)
+      └── Moshi Backend (port 8998, HTTPS/WSS)
+          └── PersonaPlex-7B-v1 (full-duplex speech-to-speech)
+              ├── Audio Input  → Speech Understanding
+              ├── LLM Backbone → Response Generation
+              └── Audio Output → Speech Synthesis
 ```
+
+### WebSocket Proxy
+
+The browser page is served over HTTPS, but the moshi backend may run with a self-signed certificate. A direct browser → moshi WebSocket would trigger a mixed-content block. The FastAPI server exposes a **same-origin proxy** at `/proxy/moshi` that tunnels audio frames between the browser and the moshi server server-side, bypassing this restriction.
+
+### Connection State Machine
+
+| State | Description |
+|-------|-------------|
+| **Connecting** | Browser WebSocket to `/proxy/moshi` is being established |
+| **Warming up…** | Proxy connected; waiting for moshi `\x00` handshake byte (model loading) |
+| **Live** | Handshake received — microphone enabled, full-duplex streaming active |
+| **Disconnected** | Session ended; auto-reconnects after 4 s unless user closed intentionally |
+
+### Auto-Connect
+
+On page load, `fetchConfig()` calls `openMoshi()` automatically — no manual *Connect* click required. The **Start** button is disabled (`off` class) until the moshi handshake byte is received, preventing audio streaming before the model is ready.
 
 ## Project Structure
 
