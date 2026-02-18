@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.1.0">
+<Project Sdk="Aspire.AppHost.Sdk/13.1.1">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,9 +12,5 @@
     <AssemblyTitle>PersonaPlex Voice (Scenario 6)</AssemblyTitle>
     <UserSecretsId>f2b0a2af-92b2-4a37-87c7-55b0a66f17fe</UserSecretsId>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.1.0" />
-  </ItemGroup>
 
 </Project>
