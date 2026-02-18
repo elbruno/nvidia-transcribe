@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -225,27 +226,29 @@ def stop_moshi_backend():
 # ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
-app = FastAPI(title="PersonaPlex Voice Conversation")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle app startup and shutdown."""
+    # Startup
+    log_and_broadcast("PersonaPlex Voice Conversation server starting…")
+    log_and_broadcast(
+        f"Moshi backend will be available at https://localhost:{MOSHI_PORT}"
+    )
+    start_moshi_backend()
+    
+    yield
+    
+    # Shutdown
+    stop_moshi_backend()
+
+
+app = FastAPI(title="PersonaPlex Voice Conversation", lifespan=lifespan)
 
 app.mount(
     "/static",
     StaticFiles(directory=Path(__file__).parent / "static"),
     name="static",
 )
-
-
-@app.on_event("startup")
-async def on_startup():
-    log_and_broadcast("PersonaPlex Voice Conversation server starting…")
-    log_and_broadcast(
-        f"Moshi backend will be available at https://localhost:{MOSHI_PORT}"
-    )
-    start_moshi_backend()
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    stop_moshi_backend()
 
 
 # ---------------------------------------------------------------------------
