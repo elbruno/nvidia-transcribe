@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PersonaPlex Voice</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<nav class="app-navbar" role="banner">
+  <div class="nav-brand">
+    <div class="brand-icon" aria-hidden="true">🗣️</div>
+    <div class="brand-text">
+      <strong class="brand-name"><em>PersonaPlex</em> Voice</strong>
+      <small>Full-duplex real-time speech · nvidia/personaplex-7b-v1</small>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <span class="conn-pill disc" id="connPill">Waiting</span>
+    <fieldset class="theme-fieldset">
+      <button class="t-pick active" data-t="system" aria-label="System theme">💻</button>
+      <button class="t-pick" data-t="light" aria-label="Light theme">☀️</button>
+      <button class="t-pick" data-t="dark" aria-label="Dark theme">🌙</button>
+    </fieldset>
+  </div>
+</nav>
+
+<main class="app-main">
+  <aside class="config-panel" id="configPanel">
+    <section class="cfg-group">
+      <h4>🎤 Voice</h4>
+      <label for="voicePick">Voice Prompt</label>
+      <select id="voicePick"></select>
+    </section>
+    <section class="cfg-group">
+      <h4>🎭 Persona</h4>
+      <label for="personaField">Persona Prompt</label>
+      <textarea id="personaField" rows="4" placeholder="Describe the AI personality…"></textarea>
+      <div class="chip-row" id="chipRow"></div>
+    </section>
+    <section class="cfg-group">
+      <h4>⚙️ Backend</h4>
+      <div class="backend-row">
+        <span class="conn-pill disc" id="bkPill" style="font-size:0.68rem;">Checking</span>
+        <button class="sm-btn" id="bkRestart">↻ Restart</button>
+      </div>
+      <p class="hint-text">The moshi server handles speech-to-speech inference in the background.</p>
+    </section>
+  </aside>
+
+  <div class="convo-column">
+    <div class="convo-scroll" id="convoScroll">
+      <div class="welcome-hero" id="heroCard">
+        <div class="hero-emoji">🗣️</div>
+        <h2>Ready to Talk</h2>
+        <p>Hold the mic button, speak, and PersonaPlex responds in real time. Full-duplex means it listens while speaking — just like a phone call.</p>
+        <p class="hero-hint">Backend: <code>wss://localhost:<span id="portHint">8998</span></code></p>
+      </div>
+    </div>
+
+    <p class="instructions">Hold to record · Release to send · Moshi handles full-duplex speech</p>
+
+    <div class="action-strip">
+      <button class="sm-btn" id="wipeChatBtn">✕ Clear</button>
+      <button class="mic-btn off" id="micBtn" aria-label="Hold to talk">Hold to<br>Talk</button>
+      <button class="sm-btn" id="linkBtn">Connect</button>
+    </div>
+  </div>
+</main>
+
+<footer class="log-footer">
+  <div class="log-bar" id="logBar">
+    <h5>📋 Server Log <span class="log-num" id="logNum">0</span></h5>
+    <div class="log-bar-actions">
+      <button class="log-wipe" id="logWipe">Clear</button>
+      <span class="caret" id="caret">▲</span>
+    </div>
+  </div>
+  <div class="log-feed" id="logFeed"></div>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
