@@ -50,6 +50,7 @@ wwwroot/dist/
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Temporary files
 tmp/
