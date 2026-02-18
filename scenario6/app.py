@@ -8,7 +8,6 @@ and lifecycle orchestration.
 """
 
 import asyncio
-import json
 import logging
 import os
 import signal
@@ -20,7 +19,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 # ---------------------------------------------------------------------------
