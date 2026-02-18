@@ -106,11 +106,46 @@ PERSONA_PRESETS = {
 log_clients: set[WebSocket] = set()
 
 
+def _probe_otlp_endpoint(endpoint: str, timeout: float = 2.0) -> bool:
+    """Return True if the OTLP collector is reachable (any HTTP response counts)."""
+    import urllib.error
+    import urllib.request
+    from urllib.parse import urlparse
+
+    parsed = urlparse(endpoint)
+    probe_url = f"{parsed.scheme}://{parsed.netloc}/"
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request(probe_url, method="HEAD"), timeout=timeout
+        )
+        return True
+    except urllib.error.HTTPError:
+        # Any HTTP error (404, 405, …) means the server is alive
+        return True
+    except Exception as exc:
+        logger.debug("OTLP probe failed (%s): %s", probe_url, exc)
+        return False
+
+
 def setup_telemetry(app: FastAPI) -> None:
-    """Enable OpenTelemetry if exporter settings are present."""
+    """Enable OpenTelemetry only when the OTLP endpoint is reachable at startup.
+
+    If the endpoint is down (e.g. Aspire dashboard not running), telemetry is
+    silently disabled so the synchronous OTLP exporter never blocks the asyncio
+    event loop and causes WebSocket disconnections.
+    """
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
         return
+
+    if not _probe_otlp_endpoint(endpoint):
+        logger.warning(
+            "OTLP endpoint %s is unreachable — OpenTelemetry disabled to "
+            "prevent WebSocket disconnections during audio streaming.",
+            endpoint,
+        )
+        return
+
     try:
         from opentelemetry import trace
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
@@ -124,10 +159,17 @@ def setup_telemetry(app: FastAPI) -> None:
         service_name = os.getenv("OTEL_SERVICE_NAME", "scenario6-frontend")
         resource = Resource.create({"service.name": service_name})
         provider = TracerProvider(resource=resource)
-        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        # Short export timeout as defence-in-depth: spans are dropped rather
+        # than blocking the event loop if the collector becomes unavailable
+        # after startup.
+        processor = BatchSpanProcessor(
+            OTLPSpanExporter(endpoint=endpoint),
+            export_timeout_millis=2000,
+        )
+        provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
         FastAPIInstrumentor.instrument_app(app)
-        logger.info("OpenTelemetry enabled for FastAPI")
+        logger.info("OpenTelemetry enabled → %s", endpoint)
     except Exception as exc:
         logger.warning("OpenTelemetry setup failed: %s", exc)
 
