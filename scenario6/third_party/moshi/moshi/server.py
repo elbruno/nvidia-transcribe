@@ -55,11 +55,56 @@ logger = setup_logger(__name__)
 DeviceString = Literal["cuda"] | Literal["cpu"] #| Literal["mps"]
 
 
+def _probe_otlp_endpoint(endpoint: str, timeout: float = 2.0) -> bool:
+    """Return True if the OTLP collector is reachable (any HTTP response counts)."""
+    import urllib.error
+    import urllib.request
+    from urllib.parse import urlparse
+
+    parsed = urlparse(endpoint)
+    probe_url = f"{parsed.scheme}://{parsed.netloc}/"
+    try:
+        urllib.request.urlopen(
+            urllib.request.Request(probe_url, method="HEAD"), timeout=timeout
+        )
+        return True
+    except urllib.error.HTTPError:
+        # Any HTTP error (404, 405, …) means the server is alive
+        return True
+    except Exception as exc:
+        logger.debug("OTLP probe failed (%s): %s", probe_url, exc)
+        return False
+
+
 def setup_telemetry() -> None:
-    """Enable OpenTelemetry for aiohttp if exporter settings are present."""
+    """Enable OpenTelemetry for aiohttp if exporter settings are present.
+
+    Probes the OTLP endpoint first; if unreachable, telemetry is disabled so
+    the synchronous HTTP exporter never blocks the asyncio event loop and
+    causes WebSocket disconnections during audio streaming.
+    """
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if not endpoint:
         return
+
+    # Force HTTP endpoint (Aspire OTLP collector expects HTTP, not HTTPS)
+    if endpoint.startswith("https://"):
+        endpoint = endpoint.replace("https://", "http://", 1)
+        logger.info("Converted OTLP endpoint to HTTP: %s", endpoint)
+
+    # OTLP HTTP protocol requires /v1/traces path
+    if not endpoint.endswith("/v1/traces"):
+        endpoint = endpoint.rstrip("/") + "/v1/traces"
+        logger.info("Using OTLP traces endpoint: %s", endpoint)
+
+    if not _probe_otlp_endpoint(endpoint):
+        logger.warning(
+            "OTLP endpoint %s is unreachable — OpenTelemetry disabled to "
+            "prevent WebSocket disconnections during audio streaming.",
+            endpoint,
+        )
+        return
+
     try:
         import requests
         from opentelemetry import trace
@@ -73,16 +118,6 @@ def setup_telemetry() -> None:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        # Force HTTP endpoint (Aspire OTLP collector expects HTTP, not HTTPS)
-        if endpoint.startswith("https://"):
-            endpoint = endpoint.replace("https://", "http://", 1)
-            logger.info("Converted OTLP endpoint to HTTP: %s", endpoint)
-
-        # OTLP HTTP protocol requires /v1/traces path
-        if not endpoint.endswith("/v1/traces"):
-            endpoint = endpoint.rstrip("/") + "/v1/traces"
-            logger.info("Using OTLP traces endpoint: %s", endpoint)
-
         # Create session with SSL verification disabled for local dev
         session = requests.Session()
         session.verify = False
@@ -93,12 +128,14 @@ def setup_telemetry() -> None:
         service_name = os.getenv("OTEL_SERVICE_NAME", "scenario6-moshi")
         resource = Resource.create({"service.name": service_name})
         provider = TracerProvider(resource=resource)
-        provider.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, session=session))
+        processor = BatchSpanProcessor(
+            OTLPSpanExporter(endpoint=endpoint, session=session),
+            export_timeout_millis=2000,
         )
+        provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
         AioHttpServerInstrumentor().instrument()
-        logger.info("OpenTelemetry enabled for moshi server")
+        logger.info("OpenTelemetry enabled for moshi server → %s", endpoint)
     except Exception as exc:
         logger.warning("OpenTelemetry setup failed: %s", exc)
 
