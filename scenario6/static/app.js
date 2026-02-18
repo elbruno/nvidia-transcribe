@@ -35,6 +35,8 @@
     var logSock     = null;
     var moshiSock   = null;
     var recorder    = null;
+    var micStream   = null;
+    var streamActive = false;
     var logCounter  = 0;
     var logFolded   = false;
     var cfg         = {};
@@ -119,7 +121,14 @@
         var host = cfg.moshi_host || location.hostname || 'localhost';
         var port = cfg.moshi_port || 8998;
         var scheme = cfg.moshi_ws_scheme || 'wss';
-        var url = cfg.moshi_ws_url || (scheme + '://' + host + ':' + port);
+        var baseUrl = cfg.moshi_ws_url || (scheme + '://' + host + ':' + port);
+        var voice = ($voicePick && $voicePick.value) ? $voicePick.value : (cfg.default_voice || 'NATF2');
+        var voicePrompt = normalizeVoice(voice);
+        var persona = ($persona && $persona.value) ? $persona.value : '';
+        var url = appendQuery(baseUrl, {
+            voice_prompt: voicePrompt,
+            text_prompt: persona
+        });
         clog('Connecting → ' + url);
         $conn.textContent = 'Connecting'; $conn.className = 'conn-pill wait';
         $link.textContent = 'Connecting…';
@@ -140,6 +149,7 @@
         moshiSock.onclose = function () {
             $conn.textContent = 'Disconnected'; $conn.className = 'conn-pill disc';
             $mic.classList.add('off'); $link.textContent = 'Connect';
+            if (streamActive) capStop();
             clog('Moshi disconnected');
         };
         moshiSock.onerror = function () {
@@ -155,14 +165,49 @@
         };
         moshiSock.onmessage = function (ev) {
             if (ev.data instanceof ArrayBuffer) {
-                playBuffer(ev.data);
-            } else {
-                try {
-                    var d = JSON.parse(ev.data);
-                    if (d.text) pushBubble('a', '🧠 ' + d.text);
-                } catch (_) { pushBubble('a', '🔊 ' + ev.data); }
+                var data = new Uint8Array(ev.data);
+                if (!data.length) return;
+                var kind = data[0];
+                var payload = data.slice(1);
+                if (kind === 0) {
+                    return;
+                }
+                if (kind === 1) {
+                    playBuffer(payload.buffer);
+                    return;
+                }
+                if (kind === 2) {
+                    var text = new TextDecoder('utf-8').decode(payload);
+                    if (text) pushBubble('a', '🧠 ' + text);
+                    return;
+                }
+                playBuffer(payload.buffer);
+                return;
             }
+            try {
+                var d = JSON.parse(ev.data);
+                if (d.text) pushBubble('a', '🧠 ' + d.text);
+            } catch (_) { pushBubble('a', '🔊 ' + ev.data); }
         };
+    }
+
+    function normalizeVoice(voice) {
+        if (!voice) return 'NATF2.pt';
+        if (voice.indexOf('.') === -1) return voice + '.pt';
+        return voice;
+    }
+
+    function appendQuery(url, params) {
+        try {
+            var u = new URL(url, window.location.href);
+            Object.keys(params).forEach(function (k) { u.searchParams.set(k, params[k]); });
+            return u.toString();
+        } catch (_) {
+            var q = Object.keys(params).map(function (k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+            }).join('&');
+            return url + (url.indexOf('?') === -1 ? '?' : '&') + q;
+        }
     }
 
     /* ==================================================================
@@ -181,94 +226,73 @@
        ================================================================== */
     function capStart() {
         if (!moshiSock || moshiSock.readyState !== WebSocket.OPEN) { clog('Not connected'); return; }
-        if (recorder && recorder.active) return;
+        if (streamActive) return;
 
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-            var ctx  = new AudioContext({ sampleRate: 16000 });
-            var src  = ctx.createMediaStreamSource(stream);
-            var proc = ctx.createScriptProcessor(4096, 1, 1);
-            var chunks = [];
+            micStream = stream;
+            var opts = pickRecorderOptions();
+            try {
+                recorder = opts ? new MediaRecorder(stream, opts) : new MediaRecorder(stream);
+            } catch (e) {
+                clog('Recorder error: ' + e.message);
+                stream.getTracks().forEach(function (t) { t.stop(); });
+                return;
+            }
 
-            proc.onaudioprocess = function (e) { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
-            src.connect(proc); proc.connect(ctx.destination);
+            recorder.ondataavailable = function (ev) {
+                if (!ev.data || ev.data.size === 0) return;
+                ev.data.arrayBuffer().then(function (buf) {
+                    if (!moshiSock || moshiSock.readyState !== WebSocket.OPEN) return;
+                    var payload = new Uint8Array(buf);
+                    var framed = new Uint8Array(payload.length + 1);
+                    framed[0] = 1;
+                    framed.set(payload, 1);
+                    moshiSock.send(framed);
+                }).catch(function (e) { clog('Chunk error: ' + e.message); });
+            };
 
-            recorder = {
-                active: true,
-                done: function () {
-                    proc.disconnect(); src.disconnect();
-                    stream.getTracks().forEach(function (t) { t.stop(); });
-
-                    // merge captured float32 chunks
-                    var total = 0;
-                    chunks.forEach(function (c) { total += c.length; });
-                    var pcm = new Float32Array(total);
-                    var off = 0;
-                    chunks.forEach(function (c) { pcm.set(c, off); off += c.length; });
-
-                    var wav = buildWav(pcm, 16000);
-                    pushBubble('u', '🎤 [audio ' + (wav.size / 1024).toFixed(1) + ' KB]');
-                    clog('Sending ' + (wav.size / 1024).toFixed(1) + ' KB');
-                    if (moshiSock && moshiSock.readyState === WebSocket.OPEN) moshiSock.send(wav);
-                    ctx.close();
+            recorder.onstop = function () {
+                if (micStream) {
+                    micStream.getTracks().forEach(function (t) { t.stop(); });
+                    micStream = null;
                 }
             };
 
+            recorder.start(250);
+            streamActive = true;
             $mic.classList.add('rec');
-            $mic.innerHTML = '🔴<br>Recording';
-            $conn.textContent = 'Recording'; $conn.className = 'conn-pill wait';
+            $mic.innerHTML = 'Stop';
+            $conn.textContent = 'Live'; $conn.className = 'conn-pill wait';
+            clog('Streaming audio');
         }).catch(function (e) { clog('Mic error: ' + e.message); });
     }
 
     function capStop() {
-        if (recorder && recorder.active) { recorder.active = false; recorder.done(); }
+        if (!streamActive) return;
+        streamActive = false;
+        if (recorder && recorder.state !== 'inactive') { recorder.stop(); }
+        if (micStream) {
+            micStream.getTracks().forEach(function (t) { t.stop(); });
+            micStream = null;
+        }
         $mic.classList.remove('rec');
-        $mic.innerHTML = 'Hold to<br>Talk';
+        $mic.innerHTML = 'Start';
         if (moshiSock && moshiSock.readyState === WebSocket.OPEN) {
             $conn.textContent = 'Connected'; $conn.className = 'conn-pill ok';
         }
+        clog('Streaming stopped');
     }
 
-    /* ==================================================================
-       WAV builder — packs Float32 PCM into a 16-bit LE RIFF/WAVE blob
-       ================================================================== */
-    function buildWav(samples, sr) {
-        var nSamples = samples.length;
-        var payloadBytes = nSamples * 2;
-        var headerSize = 44;
-        var ab = new ArrayBuffer(headerSize + payloadBytes);
-        var v  = new DataView(ab);
-
-        // -- RIFF chunk descriptor --
-        setASCII(v, 0, 'RIFF');
-        v.setUint32(4, headerSize - 8 + payloadBytes, true);
-        setASCII(v, 8, 'WAVE');
-
-        // -- fmt  sub-chunk --
-        setASCII(v, 12, 'fmt ');
-        v.setUint32(16, 16, true);          // sub-chunk size (PCM)
-        v.setUint16(20, 1, true);           // audio format: PCM
-        v.setUint16(22, 1, true);           // mono
-        v.setUint32(24, sr, true);          // sample rate
-        v.setUint32(28, sr * 2, true);      // byte rate
-        v.setUint16(32, 2, true);           // block align
-        v.setUint16(34, 16, true);          // bits per sample
-
-        // -- data sub-chunk --
-        setASCII(v, 36, 'data');
-        v.setUint32(40, payloadBytes, true);
-
-        // -- write PCM samples (float → int16) --
-        for (var i = 0; i < nSamples; i++) {
-            var f = samples[i];
-            if (f > 1) f = 1; else if (f < -1) f = -1;
-            v.setInt16(headerSize + i * 2, (f * 32767) | 0, true);
+    function pickRecorderOptions() {
+        if (typeof MediaRecorder === 'undefined') return null;
+        var types = [
+            'audio/ogg;codecs=opus',
+            'audio/webm;codecs=opus'
+        ];
+        for (var i = 0; i < types.length; i++) {
+            if (MediaRecorder.isTypeSupported(types[i])) return { mimeType: types[i] };
         }
-
-        return new Blob([ab], { type: 'audio/wav' });
-    }
-
-    function setASCII(dv, pos, s) {
-        for (var i = 0; i < s.length; i++) dv.setUint8(pos + i, s.charCodeAt(i));
+        return null;
     }
 
     /* ==================================================================
@@ -297,7 +321,7 @@
         h.className = 'welcome-hero'; h.id = 'heroCard';
         var emoji = document.createElement('div'); emoji.className = 'hero-emoji'; emoji.textContent = '🗣️';
         var heading = document.createElement('h2'); heading.textContent = 'Ready to Talk';
-        var para = document.createElement('p'); para.textContent = 'Hold the mic button to start.';
+        var para = document.createElement('p'); para.textContent = 'Click Start to begin a live conversation.';
         h.appendChild(emoji); h.appendChild(heading); h.appendChild(para);
         $convo.appendChild(h);
         clog('Chat cleared');
@@ -306,11 +330,10 @@
     /* ==================================================================
        Mic button bindings
        ================================================================== */
-    $mic.addEventListener('mousedown',  function (e) { e.preventDefault(); capStart(); });
-    $mic.addEventListener('mouseup',    function (e) { e.preventDefault(); capStop(); });
-    $mic.addEventListener('mouseleave', function ()  { if ($mic.classList.contains('rec')) capStop(); });
-    $mic.addEventListener('touchstart', function (e) { e.preventDefault(); capStart(); });
-    $mic.addEventListener('touchend',   function (e) { e.preventDefault(); capStop(); });
+    $mic.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (streamActive) { capStop(); } else { capStart(); }
+    });
 
     /* ==================================================================
        Log panel
