@@ -78,6 +78,11 @@ def setup_telemetry() -> None:
             endpoint = endpoint.replace("https://", "http://", 1)
             logger.info("Converted OTLP endpoint to HTTP: %s", endpoint)
 
+        # OTLP HTTP protocol requires /v1/traces path
+        if not endpoint.endswith("/v1/traces"):
+            endpoint = endpoint.rstrip("/") + "/v1/traces"
+            logger.info("Using OTLP traces endpoint: %s", endpoint)
+
         # Create session with SSL verification disabled for local dev
         session = requests.Session()
         session.verify = False
