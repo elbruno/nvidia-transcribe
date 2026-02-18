@@ -49,6 +49,7 @@ First run notes:
 - Expect a large model download (~14 GB) on first startup.
 - The moshi backend uses HTTPS/WSS with a self-signed cert (see Quick Start below).
 - The Aspire dashboard shows logs, health, and endpoints for both services.
+- Traces are sent to the Aspire dashboard automatically when using `aspire run`.
 
 ### Quickstart (Automated)
 

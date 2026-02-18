@@ -15,6 +15,7 @@ var moshi = builder.AddDockerfile("scenario6-moshi", "..", "moshi/Dockerfile")
     .WithEnvironment("MOSHI_CPU_OFFLOAD", cpuOffload ? "1" : "0")
     .WithHttpsEndpoint(port: moshiPort, targetPort: 8998, name: "https")
     .WithHttpHealthCheck("/health", endpointName: "https")
+    .WithOtlpExporter()
     .WithVolume("hf-model-cache-scenario6", "/root/.cache/huggingface")
     .WithLifetime(ContainerLifetime.Persistent);
 
@@ -29,6 +30,7 @@ var frontend = builder.AddDockerfile("scenario6-frontend", "..", "Dockerfile")
     .WithEnvironment("APP_HOST", "0.0.0.0")
     .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint("https"))
     .WithHttpEndpoint(port: appPort, targetPort: 8010, name: "http")
+    .WithOtlpExporter()
     .WaitFor(moshi);
 
 builder.Build().Run();

@@ -102,6 +102,32 @@ PERSONA_PRESETS = {
 log_clients: set[WebSocket] = set()
 
 
+def setup_telemetry(app: FastAPI) -> None:
+    """Enable OpenTelemetry if exporter settings are present."""
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        return
+    try:
+        from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+        service_name = os.getenv("OTEL_SERVICE_NAME", "scenario6-frontend")
+        resource = Resource.create({"service.name": service_name})
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor.instrument_app(app)
+        logger.info("OpenTelemetry enabled for FastAPI")
+    except Exception as exc:
+        logger.warning("OpenTelemetry setup failed: %s", exc)
+
+
 async def broadcast_log(message: str, level: str = "INFO", detail: str = ""):
     """Send a log entry to all connected log WebSocket clients."""
     entry = {
@@ -138,6 +164,7 @@ def log_and_broadcast(message: str, level: str = "INFO", detail: str = ""):
 # FastAPI app
 # ---------------------------------------------------------------------------
 app = FastAPI(title="PersonaPlex Voice Conversation")
+setup_telemetry(app)
 
 app.mount(
     "/static",

@@ -54,6 +54,34 @@ from .utils.logging import setup_logger, ColorizedLog
 logger = setup_logger(__name__)
 DeviceString = Literal["cuda"] | Literal["cpu"] #| Literal["mps"]
 
+
+def setup_telemetry() -> None:
+    """Enable OpenTelemetry for aiohttp if exporter settings are present."""
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        return
+    try:
+        from opentelemetry import trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.instrumentation.aiohttp_server import (
+            AioHttpServerInstrumentor,
+        )
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+        service_name = os.getenv("OTEL_SERVICE_NAME", "scenario6-moshi")
+        resource = Resource.create({"service.name": service_name})
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        trace.set_tracer_provider(provider)
+        AioHttpServerInstrumentor().instrument()
+        logger.info("OpenTelemetry enabled for moshi server")
+    except Exception as exc:
+        logger.warning("OpenTelemetry setup failed: %s", exc)
+
 def torch_auto_device(requested: Optional[DeviceString] = None) -> torch.device:
     """Return a torch.device based on the requested string or availability."""
     if requested is not None:
@@ -484,4 +512,5 @@ def main():
 
 
 with torch.no_grad():
+    setup_telemetry()
     main()

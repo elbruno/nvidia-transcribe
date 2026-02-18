@@ -10,6 +10,7 @@ COPY third_party/moshi /app/third_party/moshi
 COPY moshi/start_moshi.sh /app/start_moshi.sh
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install /app/third_party/moshi \
+    && pip install opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp opentelemetry-instrumentation-aiohttp-server \
     && chmod +x /app/start_moshi.sh
 
 RUN mkdir -p /ssl
