@@ -6,7 +6,9 @@ var moshiPort = int.TryParse(builder.Configuration["MOSHI_PORT"], out var mp) ? 
 var appPort = int.TryParse(builder.Configuration["APP_PORT"], out var ap) ? ap : 8010;
 var useGpu = ParseBool(builder.Configuration["USE_GPU"], defaultValue: true);
 var cpuOffload = ParseBool(builder.Configuration["CPU_OFFLOAD"], defaultValue: false);
+var useSsl = ParseBool(builder.Configuration["MOSHI_USE_SSL"], defaultValue: false);
 var hfToken = builder.AddParameter("hf-token", secret: true);
+var moshiEndpointName = useSsl ? "https" : "http";
 
 var moshi = builder.AddDockerfile("scenario6-moshi", "..", "moshi/Dockerfile")
     .WithImageTag("latest")
@@ -14,13 +16,23 @@ var moshi = builder.AddDockerfile("scenario6-moshi", "..", "moshi/Dockerfile")
     .WithEnvironment("HF_HOME", builder.Configuration["HF_HOME"] ?? "/root/.cache/huggingface")
     .WithEnvironment("PYTHONUNBUFFERED", "1")
     .WithEnvironment("MOSHI_CPU_OFFLOAD", cpuOffload ? "1" : "0")
+    .WithEnvironment("MOSHI_USE_SSL", useSsl ? "1" : "0")
     .WithEnvironment("MOSHI_HOST", "0.0.0.0")
     .WithEnvironment("MOSHI_PORT", moshiPort.ToString())
-    .WithHttpsEndpoint(port: moshiPort, targetPort: 8998, name: "https")
-    .WithHttpHealthCheck("/health", endpointName: "https")
     .WithOtlpExporter()
     .WithVolume("hf-model-cache-scenario6", "/root/.cache/huggingface")
     .WithLifetime(ContainerLifetime.Persistent);
+
+if (useSsl)
+{
+    moshi.WithHttpsEndpoint(port: moshiPort, targetPort: 8998, name: "https")
+         .WithHttpHealthCheck("/health", endpointName: "https");
+}
+else
+{
+    moshi.WithHttpEndpoint(port: moshiPort, targetPort: 8998, name: "http")
+         .WithHttpHealthCheck("/health", endpointName: "http");
+}
 
 if (useGpu)
 {
@@ -31,7 +43,7 @@ var frontend = builder.AddDockerfile("scenario6-frontend", "..", "Dockerfile")
     .WithImageTag("latest")
     .WithEnvironment("APP_PORT", appPort.ToString())
     .WithEnvironment("APP_HOST", "0.0.0.0")
-    .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint("https"))
+    .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
     .WithHttpEndpoint(port: appPort, targetPort: 8010, name: "http")
     .WithOtlpExporter()
     .WaitFor(moshi);

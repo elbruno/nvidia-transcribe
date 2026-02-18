@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
         opentelemetry-api==1.39.1 \
         opentelemetry-sdk==1.39.1 \
         opentelemetry-exporter-otlp==1.39.1 \
+        opentelemetry-instrumentation-aiohttp-server==0.60b1 \
         opentelemetry-instrumentation-aiohttp-client==0.60b1 && \
     chmod +x /app/start_moshi.sh && \
     mkdir -p /ssl
