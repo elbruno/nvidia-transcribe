@@ -10,11 +10,12 @@ and lifecycle orchestration.
 import asyncio
 import logging
 import os
-import sys
+import ssl as ssl_module
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote as url_quote
 from pathlib import Path
 
+import aiohttp
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
@@ -233,6 +234,91 @@ async def logs_ws(ws: WebSocket):
             await ws.receive_text()
     except (WebSocketDisconnect, RuntimeError):
         log_clients.discard(ws)
+
+
+# ---------------------------------------------------------------------------
+# WebSocket proxy — tunnels browser WSS → moshi WS/WSS backend
+# Solves mixed-content: the browser page is HTTPS, moshi runs plain HTTP.
+# The proxy is same-origin so the browser upgrade always succeeds.
+# ---------------------------------------------------------------------------
+@app.websocket("/proxy/moshi")
+async def ws_moshi_proxy(ws_client: WebSocket):
+    voice_prompt = ws_client.query_params.get("voice_prompt", "NATF2.pt")
+    text_prompt = ws_client.query_params.get("text_prompt", "")
+
+    await ws_client.accept()
+
+    # Build backend URL (use aiohttp-compatible scheme)
+    backend_scheme = "wss" if MOSHI_WS_SCHEME in ("wss", "https") else "ws"
+    backend_url = (
+        f"{backend_scheme}://{MOSHI_HOST}:{MOSHI_PORT}{MOSHI_WS_PATH}"
+        f"?voice_prompt={url_quote(voice_prompt)}"
+        f"&text_prompt={url_quote(text_prompt)}"
+    )
+    log_and_broadcast(f"Proxy → {backend_url}")
+
+    # Build SSL context for self-signed certs (accept all)
+    connector_ssl: bool | ssl_module.SSLContext = False
+    if backend_scheme == "wss":
+        ctx = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl_module.CERT_NONE
+        connector_ssl = ctx
+
+    stop_event = asyncio.Event()
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(backend_url, ssl=connector_ssl) as ws_backend:
+                log_and_broadcast("Proxy: backend connected")
+
+                async def client_to_backend():
+                    try:
+                        while not stop_event.is_set():
+                            try:
+                                raw = await asyncio.wait_for(ws_client.receive(), timeout=60.0)
+                                if raw.get("type") == "websocket.disconnect":
+                                    break
+                                if raw.get("bytes"):
+                                    await ws_backend.send_bytes(raw["bytes"])
+                            except asyncio.TimeoutError:
+                                continue
+                            except Exception:
+                                break
+                    finally:
+                        stop_event.set()
+                        await ws_backend.close()
+
+                async def backend_to_client():
+                    try:
+                        async for msg in ws_backend:
+                            if stop_event.is_set():
+                                break
+                            if msg.type == aiohttp.WSMsgType.BINARY:
+                                await ws_client.send_bytes(msg.data)
+                            elif msg.type in (
+                                aiohttp.WSMsgType.CLOSE,
+                                aiohttp.WSMsgType.CLOSED,
+                                aiohttp.WSMsgType.ERROR,
+                            ):
+                                log_and_broadcast("Proxy: backend closed", level="WARN")
+                                break
+                    finally:
+                        stop_event.set()
+
+                await asyncio.gather(
+                    client_to_backend(),
+                    backend_to_client(),
+                    return_exceptions=True,
+                )
+    except Exception as exc:
+        log_and_broadcast(f"Proxy error: {exc}", level="ERROR")
+    finally:
+        log_and_broadcast("Proxy: session ended")
+        try:
+            await ws_client.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

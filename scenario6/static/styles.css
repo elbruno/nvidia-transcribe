@@ -126,6 +126,8 @@ body{font-family:var(--sans);background:var(--c-bg);color:var(--c-txt);
 .conn-pill.disc::before{background:#ef5350}
 .conn-pill.wait{color:#ffb74d;border:1px solid #ffb74d}
 .conn-pill.wait::before{background:#ffb74d;animation:blinker 1.5s infinite}
+.conn-pill.warm{color:#64b5f6;border:1px solid #64b5f6}
+.conn-pill.warm::before{background:#64b5f6;animation:blinker 1.2s infinite}
 @keyframes blinker{0%,100%{opacity:1}50%{opacity:0.3}}
 
 /* ===================================================================

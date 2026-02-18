@@ -4,8 +4,11 @@
  * Handles:
  *  - Theme switching (system / light / dark)
  *  - Server config loading (voices, personas)
- *  - Moshi WebSocket connection for full-duplex audio
- *  - Microphone capture via Web Audio API
+ *  - Moshi WebSocket proxy connection for full-duplex audio
+ *    (uses /proxy/moshi so WSS same-origin avoids mixed-content block)
+ *  - Auto-connect on load; handshake-gated mic enable
+ *  - Microphone capture via MediaRecorder → Opus chunks
+ *  - Scheduled AudioContext playback queue for gapless output
  *  - Real-time server log streaming
  */
 (function () {
@@ -37,9 +40,17 @@
     var recorder    = null;
     var micStream   = null;
     var streamActive = false;
+    var handshakeOk  = false;   // true after server sends \x00 "ready" byte
+    var reconnTimer  = null;
     var logCounter  = 0;
     var logFolded   = false;
     var cfg         = {};
+
+    // Audio playback — scheduled queue so chunks play gaplessly
+    var audioCtx    = null;
+    var nextPlayAt  = 0;
+    var textBuf     = '';
+    var textTimer   = null;
 
     /* ==================================================================
        Theme
@@ -104,127 +115,168 @@
             var statusClass = c.moshi_backend_running === true ? 'ok' : c.moshi_backend_running === false ? 'disc' : 'wait';
             $bk.textContent = statusText;
             $bk.className   = 'conn-pill ' + statusClass;
-            clog('Config loaded');
+            clog('Config loaded — connecting…');
+            // Auto-connect once config is ready
+            openMoshi();
         }).catch(function (e) { clog('Config error: ' + e.message); });
     }
     fetchConfig();
 
     /* ==================================================================
-       Moshi WebSocket
+       Moshi WebSocket (via same-origin proxy at /proxy/moshi)
        ================================================================== */
     $link.addEventListener('click', function () {
-        if (moshiSock && moshiSock.readyState === WebSocket.OPEN) { moshiSock.close(); return; }
+        if (moshiSock && moshiSock.readyState === WebSocket.OPEN) {
+            moshiSock.close();
+            if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; }
+            return;
+        }
         openMoshi();
     });
 
-    function openMoshi() {
-        var host = cfg.moshi_host || location.hostname || 'localhost';
-        var port = cfg.moshi_port || 8998;
-        var scheme = cfg.moshi_ws_scheme || 'wss';
-        var baseUrl = cfg.moshi_ws_url || (scheme + '://' + host + ':' + port);
+    function buildProxyUrl() {
+        var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        var port  = location.port ? ':' + location.port : '';
         var voice = ($voicePick && $voicePick.value) ? $voicePick.value : (cfg.default_voice || 'NATF2');
         var voicePrompt = normalizeVoice(voice);
         var persona = ($persona && $persona.value) ? $persona.value : '';
-        var url = appendQuery(baseUrl, {
-            voice_prompt: voicePrompt,
-            text_prompt: persona
-        });
-        clog('Connecting → ' + url);
-        $conn.textContent = 'Connecting'; $conn.className = 'conn-pill wait';
+        return (
+            proto + '://' + location.hostname + port + '/proxy/moshi'
+            + '?voice_prompt=' + encodeURIComponent(voicePrompt)
+            + '&text_prompt='  + encodeURIComponent(persona)
+        );
+    }
+
+    function openMoshi() {
+        if (moshiSock && moshiSock.readyState !== WebSocket.CLOSED) return;
+        handshakeOk = false;
+        var url = buildProxyUrl();
+        clog('Connecting → proxy/moshi');
+        setConnState('connecting');
         $link.textContent = 'Connecting…';
 
         try { moshiSock = new WebSocket(url); } catch (e) {
             clog('WS error: ' + e.message);
-            $conn.textContent = 'Failed'; $conn.className = 'conn-pill disc';
-            $link.textContent = 'Connect'; return;
+            setConnState('error');
+            $link.textContent = 'Reconnect';
+            return;
         }
         moshiSock.binaryType = 'arraybuffer';
 
         moshiSock.onopen = function () {
-            $conn.textContent = 'Connected'; $conn.className = 'conn-pill ok';
-            $mic.classList.remove('off'); $link.textContent = 'Disconnect';
-            clog('Moshi connected');
-            pushBubble('s', '🟢 Connected — start speaking!');
+            // Connected to proxy — now waiting for moshi \x00 handshake
+            setConnState('warming');
+            $link.textContent = 'Disconnect';
+            clog('Proxy open — waiting for model handshake…');
+            pushBubble('s', '⏳ Loading model — please wait…');
         };
-        moshiSock.onclose = function () {
-            $conn.textContent = 'Disconnected'; $conn.className = 'conn-pill disc';
-            $mic.classList.add('off'); $link.textContent = 'Connect';
+
+        moshiSock.onclose = function (ev) {
+            setConnState('disc');
             if (streamActive) capStop();
-            clog('Moshi disconnected');
+            $link.textContent = 'Reconnect';
+            handshakeOk = false;
+            clog('Disconnected (code ' + ev.code + ')');
+            // Auto-reconnect after 4 s unless user manually closed (code 1000)
+            if (ev.code !== 1000 && ev.code !== 1001) {
+                reconnTimer = setTimeout(openMoshi, 4000);
+                clog('Will reconnect in 4 s…');
+            }
         };
+
         moshiSock.onerror = function () {
-            clog('WS error — backend running?');
-            $conn.textContent = 'Error'; $conn.className = 'conn-pill disc';
-            $link.textContent = 'Connect';
-            var certScheme = scheme === 'wss' ? 'https' : 'http';
-            var certUrl = certScheme + '://' + host + ':' + port;
-            var hint = scheme === 'wss'
-                ? '⚠️ Cannot reach moshi backend. Accept the self-signed cert by visiting ' + certUrl + ' first.'
-                : '⚠️ Cannot reach moshi backend. Check that it is running at ' + certUrl + '.';
-            pushBubble('s', hint);
+            setConnState('error');
+            clog('WS error — check backend');
+            pushBubble('s', '⚠️ Connection error. Retrying…');
         };
+
         moshiSock.onmessage = function (ev) {
-            if (ev.data instanceof ArrayBuffer) {
-                var data = new Uint8Array(ev.data);
-                if (!data.length) return;
-                var kind = data[0];
-                var payload = data.slice(1);
-                if (kind === 0) {
-                    return;
-                }
-                if (kind === 1) {
-                    playBuffer(payload.buffer);
-                    return;
-                }
-                if (kind === 2) {
-                    var text = new TextDecoder('utf-8').decode(payload);
-                    if (text) pushBubble('a', '🧠 ' + text);
-                    return;
-                }
-                playBuffer(payload.buffer);
+            if (!(ev.data instanceof ArrayBuffer)) {
+                try {
+                    var d = JSON.parse(ev.data);
+                    if (d.text) accumText(d.text);
+                } catch (_) {}
                 return;
             }
-            try {
-                var d = JSON.parse(ev.data);
-                if (d.text) pushBubble('a', '🧠 ' + d.text);
-            } catch (_) { pushBubble('a', '🔊 ' + ev.data); }
+            var data = new Uint8Array(ev.data);
+            if (!data.length) return;
+            var kind    = data[0];
+            var payload = data.slice(1);
+
+            if (kind === 0) {
+                // Server handshake — model is ready
+                handshakeOk = true;
+                setConnState('ready');
+                $mic.classList.remove('off');
+                clog('Handshake received — model ready');
+                pushBubble('s', '🟢 Ready — click Start to begin');
+                resetAudio();
+                return;
+            }
+            if (kind === 1) {
+                // Opus audio from moshi
+                schedulePlay(payload.buffer);
+                return;
+            }
+            if (kind === 2) {
+                // Text token fragment
+                var tok = new TextDecoder('utf-8').decode(payload);
+                if (tok) accumText(tok);
+            }
         };
     }
 
-    function normalizeVoice(voice) {
-        if (!voice) return 'NATF2.pt';
-        if (voice.indexOf('.') === -1) return voice + '.pt';
-        return voice;
-    }
-
-    function appendQuery(url, params) {
-        try {
-            var u = new URL(url, window.location.href);
-            Object.keys(params).forEach(function (k) { u.searchParams.set(k, params[k]); });
-            return u.toString();
-        } catch (_) {
-            var q = Object.keys(params).map(function (k) {
-                return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
-            }).join('&');
-            return url + (url.indexOf('?') === -1 ? '?' : '&') + q;
-        }
+    function setConnState(state) {
+        var label = { connecting: 'Connecting', warming: 'Warming up…', ready: 'Live',
+                      disc: 'Disconnected', error: 'Error' }[state] || state;
+        var cls   = { connecting: 'wait', warming: 'warm', ready: 'ok',
+                      disc: 'disc', error: 'disc' }[state] || 'disc';
+        $conn.textContent = label;
+        $conn.className   = 'conn-pill ' + cls;
+        if (state !== 'ready') { $mic.classList.add('off'); }
     }
 
     /* ==================================================================
-       Audio playback
+       Audio playback — AudioContext scheduled queue for gapless output
        ================================================================== */
-    function playBuffer(buf) {
-        try {
-            var blob = new Blob([buf], { type: 'audio/ogg' });
-            var player = new Audio(URL.createObjectURL(blob));
-            player.play().catch(function (e) { clog('Play error: ' + e.message); });
-        } catch (e) { clog('Decode error: ' + e.message); }
+    function resetAudio() {
+        audioCtx   = new (window.AudioContext || window.webkitAudioContext)();
+        nextPlayAt = audioCtx.currentTime;
+    }
+
+    function schedulePlay(buf) {
+        if (!audioCtx) return;
+        audioCtx.decodeAudioData(buf.slice(0), function (decoded) {
+            var src = audioCtx.createBufferSource();
+            src.buffer = decoded;
+            src.connect(audioCtx.destination);
+            var now = audioCtx.currentTime;
+            if (nextPlayAt < now) nextPlayAt = now;
+            src.start(nextPlayAt);
+            nextPlayAt += decoded.duration;
+        }, function () {
+            // decodeAudioData failed — chunk may be an intermediate Opus frame; ignore silently
+        });
     }
 
     /* ==================================================================
-       Microphone capture (Web Audio ScriptProcessor → 16 kHz mono PCM)
+       Text token accumulator — fragments arrive word-by-word; batch them
+       ================================================================== */
+    function accumText(tok) {
+        textBuf += tok;
+        if (textTimer) clearTimeout(textTimer);
+        textTimer = setTimeout(function () {
+            if (textBuf.trim()) { pushBubble('a', '🧠 ' + textBuf.trim()); }
+            textBuf = '';
+            textTimer = null;
+        }, 600);
+    }
+
+    /* ==================================================================
+       Microphone capture — MediaRecorder → Opus chunks → WS
        ================================================================== */
     function capStart() {
+        if (!handshakeOk) { clog('Model not ready yet'); return; }
         if (!moshiSock || moshiSock.readyState !== WebSocket.OPEN) { clog('Not connected'); return; }
         if (streamActive) return;
 
@@ -258,11 +310,11 @@
                 }
             };
 
-            recorder.start(250);
+            recorder.start(100);   // 100 ms chunks for low latency
             streamActive = true;
             $mic.classList.add('rec');
             $mic.innerHTML = 'Stop';
-            $conn.textContent = 'Live'; $conn.className = 'conn-pill wait';
+            $conn.textContent = 'Live'; $conn.className = 'conn-pill ok';
             clog('Streaming audio');
         }).catch(function (e) { clog('Mic error: ' + e.message); });
     }
@@ -277,10 +329,16 @@
         }
         $mic.classList.remove('rec');
         $mic.innerHTML = 'Start';
-        if (moshiSock && moshiSock.readyState === WebSocket.OPEN) {
-            $conn.textContent = 'Connected'; $conn.className = 'conn-pill ok';
+        if (handshakeOk && moshiSock && moshiSock.readyState === WebSocket.OPEN) {
+            setConnState('ready');
         }
         clog('Streaming stopped');
+    }
+
+    function normalizeVoice(voice) {
+        if (!voice) return 'NATF2.pt';
+        if (voice.indexOf('.') === -1) return voice + '.pt';
+        return voice;
     }
 
     function pickRecorderOptions() {
@@ -324,6 +382,7 @@
         var para = document.createElement('p'); para.textContent = 'Click Start to begin a live conversation.';
         h.appendChild(emoji); h.appendChild(heading); h.appendChild(para);
         $convo.appendChild(h);
+        $hero = h;
         clog('Chat cleared');
     });
 
