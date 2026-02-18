@@ -6,13 +6,16 @@ var moshiPort = int.TryParse(builder.Configuration["MOSHI_PORT"], out var mp) ? 
 var appPort = int.TryParse(builder.Configuration["APP_PORT"], out var ap) ? ap : 8010;
 var useGpu = ParseBool(builder.Configuration["USE_GPU"], defaultValue: true);
 var cpuOffload = ParseBool(builder.Configuration["CPU_OFFLOAD"], defaultValue: false);
+var hfToken = builder.AddParameter("hf-token", secret: true);
 
 var moshi = builder.AddDockerfile("scenario6-moshi", "..", "moshi/Dockerfile")
     .WithImageTag("latest")
-    .WithEnvironment("HF_TOKEN", builder.Configuration["HF_TOKEN"] ?? "")
+    .WithEnvironment("HF_TOKEN", hfToken)
     .WithEnvironment("HF_HOME", builder.Configuration["HF_HOME"] ?? "/root/.cache/huggingface")
     .WithEnvironment("PYTHONUNBUFFERED", "1")
     .WithEnvironment("MOSHI_CPU_OFFLOAD", cpuOffload ? "1" : "0")
+    .WithEnvironment("MOSHI_HOST", "0.0.0.0")
+    .WithEnvironment("MOSHI_PORT", moshiPort.ToString())
     .WithHttpsEndpoint(port: moshiPort, targetPort: 8998, name: "https")
     .WithHttpHealthCheck("/health", endpointName: "https")
     .WithOtlpExporter()

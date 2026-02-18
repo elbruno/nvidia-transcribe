@@ -8,7 +8,7 @@ This AppHost runs Scenario 6 as two separate services (Docker containers):
 
 - .NET 10 SDK
 - Docker (with GPU support if available)
-- Hugging Face token available via `HF_TOKEN` (user-secrets or env)
+- Hugging Face token available via Aspire parameter `HF_TOKEN` (user-secrets or env)
 - NVIDIA Container Toolkit for GPU passthrough (optional but recommended)
 
 ## Run

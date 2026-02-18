@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+test/
+tests/
+*_test.py
+test_*.py
+
+# Aspire and .NET
+AppHost/
+ServiceDefaults/
+*.csproj
+*.slnx
+
+# Frontend
+app.py
+static/
+Dockerfile
+
+# Environment
+.env
+.env.example
