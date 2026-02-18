@@ -272,7 +272,7 @@
     /* ==================================================================
        Chat bubbles
        ================================================================== */
-    function pushBubble(kind, html) {
+    function pushBubble(kind, text) {
         if ($hero) $hero.style.display = 'none';
         var el = document.createElement('div');
         el.className = 'bubble ' + kind;
@@ -283,7 +283,7 @@
             el.appendChild(tag);
         }
         var sp = document.createElement('span');
-        sp.innerHTML = html;
+        sp.textContent = text;
         el.appendChild(sp);
         $convo.appendChild(el);
         $convo.scrollTop = $convo.scrollHeight;
@@ -293,7 +293,10 @@
         $convo.innerHTML = '';
         var h = document.createElement('div');
         h.className = 'welcome-hero'; h.id = 'heroCard';
-        h.innerHTML = '<div class="hero-emoji">🗣️</div><h2>Ready to Talk</h2><p>Hold the mic button to start.</p>';
+        var emoji = document.createElement('div'); emoji.className = 'hero-emoji'; emoji.textContent = '🗣️';
+        var heading = document.createElement('h2'); heading.textContent = 'Ready to Talk';
+        var para = document.createElement('p'); para.textContent = 'Hold the mic button to start.';
+        h.appendChild(emoji); h.appendChild(heading); h.appendChild(para);
         $convo.appendChild(h);
         clog('Chat cleared');
     });
