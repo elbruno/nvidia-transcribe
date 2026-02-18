@@ -146,8 +146,12 @@
             clog('WS error — backend running?');
             $conn.textContent = 'Error'; $conn.className = 'conn-pill disc';
             $link.textContent = 'Connect';
-            var httpsUrl = 'https://' + host + ':' + port;
-            pushBubble('s', '⚠️ Cannot reach moshi backend. Accept the self-signed cert by visiting ' + httpsUrl + ' first.');
+            var certScheme = scheme === 'wss' ? 'https' : 'http';
+            var certUrl = certScheme + '://' + host + ':' + port;
+            var hint = scheme === 'wss'
+                ? '⚠️ Cannot reach moshi backend. Accept the self-signed cert by visiting ' + certUrl + ' first.'
+                : '⚠️ Cannot reach moshi backend. Check that it is running at ' + certUrl + '.';
+            pushBubble('s', hint);
         };
         moshiSock.onmessage = function (ev) {
             if (ev.data instanceof ArrayBuffer) {
