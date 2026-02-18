@@ -13,4 +13,8 @@
     <UserSecretsId>f2b0a2af-92b2-4a37-87c7-55b0a66f17fe</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Python" Version="13.1.1" />
+  </ItemGroup>
+
 </Project>

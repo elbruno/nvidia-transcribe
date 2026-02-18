@@ -42,6 +42,12 @@ A real-time, full-duplex voice conversation web app powered by **NVIDIA PersonaP
 - **Docker** Desktop or Engine (running)
 - **NVIDIA Container Toolkit** (optional, for GPU support in containers)
 
+**For Development Mode with Aspire Python:**
+- **Python 3.10-3.12** installed and accessible via `python` or `py` command
+- **Virtual environment** created by running `setup_scenario6.py` from scenario6 directory
+- **System dependencies** (libopus-dev on Linux, Visual Studio Build Tools on Windows)
+- See [AppHost/README.md](AppHost/README.md) for detailed setup instructions
+
 ### For Manual Setup Path
 
 - **Opus development library**:
@@ -88,16 +94,36 @@ aspire run
 
 The **Aspire Dashboard** opens automatically at `http://localhost:15000`. Click the **Web UI endpoint** link (usually `http://localhost:8010`) to open the app.
 
+#### Orchestration Modes
+
+Aspire uses **hybrid orchestration** for optimal developer experience:
+
+| Mode | When | Frontend | Moshi Backend | Benefits |
+|------|------|----------|---------------|----------|
+| **Development** | `aspire run` | Aspire Python | Docker | Fast iteration, hot reload, no frontend rebuild |
+| **Production** | `dotnet publish` | Docker | Docker | Consistent deployment, both containerized |
+
+**Development mode** (default):
+- Frontend runs via Aspire Python integration - change `app.py` and see updates instantly
+- Moshi backend runs via Docker (too complex for native execution)
+- Requires Python 3.10-3.12 and venv setup (see AppHost/README.md)
+
+**Production mode**:
+- Both services run as Docker containers
+- Used for deployment and publishing
+
 #### What Aspire Handles
 
-You don't need to do anything else. Aspire automatically:
+**Development Mode** (`aspire run`):
 
-✅ Installs Python dependencies (PyTorch, NVIDIA NeMo, Moshi, FastAPI)  
+✅ Runs frontend via Aspire Python (hot reload enabled)  
+✅ Builds and runs Moshi backend Docker container  
 ✅ Downloads the PersonaPlex model (~14 GB) on first run  
-✅ Spins up Docker containers for the Moshi backend and FastAPI server  
 ✅ Configures SSL/TLS certificates for secure WebSocket connections  
 ✅ Provides a dashboard with live logs, health checks, and distributed traces  
 ✅ Loads your `.env` configuration automatically
+
+**Note**: For development mode, you must first create a Python virtual environment by running `setup_scenario6.py` (see AppHost/README.md for details).
 
 #### First Run Timeline
 
@@ -334,6 +360,10 @@ scenario6/
 | Docker not running | Start Docker Desktop/Engine and re-run `aspire run` |
 | GPU not detected in container | Install NVIDIA Container Toolkit and set `USE_GPU=true` |
 | Moshi TLS warnings in browser | Visit the moshi HTTPS URL and accept the self-signed certificate |
+| `venv` not found (dev mode) | Run `python scenario6/setup_scenario6.py` from repo root to create virtual environment |
+| Python version error (dev mode) | Ensure Python 3.10-3.12 is installed (not 3.13). Use `py -3.12` on Windows |
+| Module import errors (dev mode) | Activate venv and re-run `setup_scenario6.py` to ensure all dependencies are installed |
+| Frontend fails to start (dev mode) | Check AppHost/README.md for detailed development mode prerequisites |
 
 ## License
 

@@ -39,14 +39,42 @@ if (useGpu)
     moshi.WithContainerRuntimeArgs("--gpus=all");
 }
 
-var frontend = builder.AddDockerfile("scenario6-frontend", "..", "Dockerfile")
-    .WithImageTag("latest")
-    .WithEnvironment("APP_PORT", appPort.ToString())
-    .WithEnvironment("APP_HOST", "0.0.0.0")
-    .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
-    .WithHttpEndpoint(port: appPort, targetPort: 8010, name: "http")
-    .WithOtlpExporter()
-    .WaitFor(moshi);
+// Frontend service using hybrid orchestration:
+// - DEVELOPMENT: Aspire Python integration (AddUvicornApp) for fast iteration and hot reload
+// - PRODUCTION: Docker container (AddDockerfile) for consistency and deployment
+// The moshi backend always uses Docker in both modes due to complexity (vendored code, custom startup)
+IResourceBuilder<IResourceWithEndpoints> frontend;
+
+if (builder.ExecutionContext.IsPublishMode)
+{
+    // PRODUCTION: Use Docker container for frontend
+    frontend = builder.AddDockerfile("scenario6-frontend", "..", "Dockerfile")
+        .WithImageTag("latest")
+        .WithEnvironment("APP_PORT", appPort.ToString())
+        .WithEnvironment("APP_HOST", "0.0.0.0")
+        .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
+        .WithHttpEndpoint(port: appPort, targetPort: 8010, name: "http")
+        .WithOtlpExporter()
+        .WaitFor(moshi);
+}
+else
+{
+    // DEVELOPMENT: Use Aspire Python integration for frontend
+    // Requires Python 3.10-3.12, venv setup (run setup_scenario6.py first)
+    // This mode provides fast iteration, hot reload, and native debugging without Docker
+    frontend = builder.AddUvicornApp("scenario6-frontend", "..", "app:app")
+        .WithHttpEndpoint(port: appPort, name: "http")
+        .WithHttpHealthCheck("/health")
+        .WithVirtualEnvironment("../venv")
+        .WithPip()
+        .WithEnvironment("PYTHONUNBUFFERED", "1")
+        .WithEnvironment("APP_HOST", "0.0.0.0")
+        .WithEnvironment("APP_PORT", appPort.ToString())
+        .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
+        .WithEnvironment("HF_TOKEN", hfToken)
+        .WithOtlpExporter()
+        .WaitFor(moshi);
+}
 
 builder.Build().Run();
 
