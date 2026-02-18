@@ -39,6 +39,7 @@ MOSHI_HOST = os.getenv("MOSHI_HOST", "localhost")
 MOSHI_PORT = int(os.getenv("MOSHI_PORT", "8998"))
 MOSHI_WS_SCHEME = os.getenv("MOSHI_WS_SCHEME", "wss")
 MOSHI_WS_URL = os.getenv("MOSHI_WS_URL", "")
+MOSHI_WS_PATH = "/api/chat"
 
 if MOSHI_WS_URL:
     parsed = urlparse(MOSHI_WS_URL)
@@ -53,7 +54,9 @@ if MOSHI_WS_URL:
         MOSHI_HOST = parsed.hostname
     if parsed.port:
         MOSHI_PORT = parsed.port
-    MOSHI_WS_URL = f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}"
+    if parsed.path and parsed.path != "/":
+        MOSHI_WS_PATH = parsed.path
+    MOSHI_WS_URL = f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}{MOSHI_WS_PATH}"
 DEFAULT_VOICE = os.getenv("DEFAULT_VOICE", "NATF2")
 DEFAULT_PERSONA = os.getenv(
     "DEFAULT_PERSONA",
@@ -195,7 +198,7 @@ async def health():
 async def info():
     return {
         "service": "scenario6-frontend",
-        "moshi_ws_url": MOSHI_WS_URL or f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}",
+        "moshi_ws_url": MOSHI_WS_URL or f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}{MOSHI_WS_PATH}",
         "moshi_version": MOSHI_VERSION,
     }
 
@@ -207,7 +210,7 @@ async def get_config():
         "moshi_host": MOSHI_HOST,
         "moshi_port": MOSHI_PORT,
         "moshi_ws_scheme": MOSHI_WS_SCHEME,
-        "moshi_ws_url": MOSHI_WS_URL or f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}",
+        "moshi_ws_url": MOSHI_WS_URL or f"{MOSHI_WS_SCHEME}://{MOSHI_HOST}:{MOSHI_PORT}{MOSHI_WS_PATH}",
         "moshi_version": MOSHI_VERSION,
         "voices": VOICES,
         "persona_presets": PERSONA_PRESETS,
