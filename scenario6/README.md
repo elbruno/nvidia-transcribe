@@ -38,20 +38,41 @@ A real-time, full-duplex voice conversation web app powered by **NVIDIA PersonaP
 
 ### Quickstart (Automated)
 
-```bash
+> **Do I need to create a venv first?**
+> **No.** The setup script creates and manages the `venv/` directory at the repo root automatically.
+> You do not need to follow the main README's Quick Start first.
+> If you already have a venv activated, the script installs into it instead.
+
+```powershell
 # 1) Install system dependencies (see below for your OS)
 
 # 2) Run the bootstrap script (creates venv, installs deps, copies .env)
-python scenario6/setup_scenario6.py
+#    Windows: use the py launcher to ensure Python 3.12 is selected (3.13 is NOT supported)
+py -3.12 scenario6/setup_scenario6.py
 
 # Optional: write your Hugging Face token directly into .env
-# python scenario6/setup_scenario6.py --hf-token hf_your_token_here
+# py -3.12 scenario6/setup_scenario6.py --hf-token hf_your_token_here
+
+# Linux/macOS
+python3.12 scenario6/setup_scenario6.py
 ```
 
 Next steps:
-1. Set `HF_TOKEN` in `scenario6/.env` (if you did not pass `--hf-token`).
-2. Accept the model license: https://huggingface.co/nvidia/personaplex-7b-v1
-3. Run: `python scenario6/app.py`
+1. **Activate the virtual environment** created by the script:
+   ```powershell
+   # Windows
+   venv\Scripts\activate
+   ```
+   ```bash
+   # Linux/macOS
+   source venv/bin/activate
+   ```
+2. Set `HF_TOKEN` in `scenario6/.env` (if you did not pass `--hf-token`).
+3. Accept the model license: https://huggingface.co/nvidia/personaplex-7b-v1
+4. Run the app (from the repo root, with the venv active):
+   ```powershell
+   python scenario6/app.py
+   ```
 
 For the full manual walkthrough and troubleshooting, see [scenario6/docs/USER_MANUAL.md](scenario6/docs/USER_MANUAL.md).
 

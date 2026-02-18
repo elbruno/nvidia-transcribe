@@ -23,6 +23,20 @@ def in_venv() -> bool:
     return sys.prefix != sys.base_prefix
 
 
+def repair_pip() -> None:
+    """Ensure pip is functional, repairing via ensurepip if needed."""
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError:
+        print("pip appears broken; repairing via ensurepip...")
+        run([sys.executable, "-m", "ensurepip", "--upgrade"])
+        run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+
+
 def ensure_venv(python_exe: str, venv_dir: Path, args: list[str]) -> int:
     if in_venv() or "--in-venv" in args:
         return 0
@@ -93,6 +107,8 @@ def main() -> int:
     if not shutil.which("git"):
         print("git is required to install the moshi package. Please install git and re-run.")
         return 1
+
+    repair_pip()
 
     if not args.skip_torch:
         run([sys.executable, "-m", "pip", "install", "torch", "--index-url", TORCH_INDEX_URL])
