@@ -61,6 +61,7 @@ def setup_telemetry() -> None:
     if not endpoint:
         return
     try:
+        import requests
         from opentelemetry import trace
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
             OTLPSpanExporter,
@@ -72,10 +73,24 @@ def setup_telemetry() -> None:
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+        # Force HTTP endpoint (Aspire OTLP collector expects HTTP, not HTTPS)
+        if endpoint.startswith("https://"):
+            endpoint = endpoint.replace("https://", "http://", 1)
+            logger.info("Converted OTLP endpoint to HTTP: %s", endpoint)
+
+        # Create session with SSL verification disabled for local dev
+        session = requests.Session()
+        session.verify = False
+        # Suppress InsecureRequestWarning
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
         service_name = os.getenv("OTEL_SERVICE_NAME", "scenario6-moshi")
         resource = Resource.create({"service.name": service_name})
         provider = TracerProvider(resource=resource)
-        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        provider.add_span_processor(
+            BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, session=session))
+        )
         trace.set_tracer_provider(provider)
         AioHttpServerInstrumentor().instrument()
         logger.info("OpenTelemetry enabled for moshi server")
