@@ -99,8 +99,19 @@ Set these environment variables before running Aspire:
 
 - `USE_GPU` (default: `true`) - enable GPU passthrough for the moshi container
 - `CPU_OFFLOAD` (default: `false`) - enable moshi CPU offload mode
+- `MOSHI_USE_SSL` (default: `false`) - enable SSL/TLS on moshi backend (requires cert setup)
 - `APP_PORT` (default: `8010`) - frontend HTTP port
 - `MOSHI_PORT` (default: `8998`) - moshi backend port
+
+## Network Architecture
+
+By default both services run over plain HTTP/WS:
+
+- Browser → `http://localhost:8010` (frontend web UI)
+- Browser → `ws://localhost:8998/api/chat` (direct WebSocket to moshi)
+- Frontend → `http://localhost:8998/health` (Aspire health check)
+
+OpenTelemetry (OTLP) is **disabled** to avoid blocking the async event loop during audio streaming. See [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) for details.
 
 ## Troubleshooting
 

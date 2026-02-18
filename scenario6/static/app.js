@@ -123,7 +123,7 @@
     fetchConfig();
 
     /* ==================================================================
-       Moshi WebSocket (via same-origin proxy at /proxy/moshi)
+       Moshi WebSocket (direct connection to backend)
        ================================================================== */
     $link.addEventListener('click', function () {
         if (moshiSock && moshiSock.readyState === WebSocket.OPEN) {
@@ -134,14 +134,22 @@
         openMoshi();
     });
 
-    function buildProxyUrl() {
-        var proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        var port  = location.port ? ':' + location.port : '';
+    function buildMoshiUrl() {
         var voice = ($voicePick && $voicePick.value) ? $voicePick.value : (cfg.default_voice || 'NATF2');
         var voicePrompt = normalizeVoice(voice);
         var persona = ($persona && $persona.value) ? $persona.value : '';
+        // Connect directly to the moshi backend (both services run HTTP/WS)
+        var wsUrl = cfg.moshi_ws_url;
+        if (!wsUrl) {
+            var scheme = (cfg.moshi_ws_scheme === 'wss') ? 'wss' : 'ws';
+            var host = cfg.moshi_host || location.hostname || 'localhost';
+            var port = cfg.moshi_port || 8998;
+            wsUrl = scheme + '://' + host + ':' + port + '/api/chat';
+        }
+        // Ensure ws/wss scheme
+        wsUrl = wsUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
         return (
-            proto + '://' + location.hostname + port + '/proxy/moshi'
+            wsUrl
             + '?voice_prompt=' + encodeURIComponent(voicePrompt)
             + '&text_prompt='  + encodeURIComponent(persona)
         );
@@ -150,8 +158,8 @@
     function openMoshi() {
         if (moshiSock && moshiSock.readyState !== WebSocket.CLOSED) return;
         handshakeOk = false;
-        var url = buildProxyUrl();
-        clog('Connecting → proxy/moshi');
+        var url = buildMoshiUrl();
+        clog('Connecting → ' + url.split('?')[0]);
         setConnState('connecting');
         $link.textContent = 'Connecting…';
 

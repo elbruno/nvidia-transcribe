@@ -237,10 +237,12 @@ When using Aspire:
 | **Traces** | View request traces for debugging |
 | **Endpoints** | Click the Web UI link to open the app |
 
-### Certificate Handling (Manual Setup Only)
+### Certificate Handling (SSL Mode Only)
+
+By default, both services run over plain HTTP — no certificates needed. If you enable SSL (`MOSHI_USE_SSL=true`):
 
 - First time only: Visit `https://localhost:8998` and accept the self-signed certificate
-- Or disable SSL by setting `MOSHI_WS_SCHEME=ws` in `.env`
+- Or revert to HTTP by setting `MOSHI_USE_SSL=false` in `.env`
 
 ### Port and Host Overrides
 
@@ -293,8 +295,9 @@ All configuration is in `scenario6/.env` (copy from `.env.example`):
 | `APP_PORT` | `8010` | Web UI server port |
 | `MOSHI_HOST` | `localhost` | Moshi backend host |
 | `MOSHI_PORT` | `8998` | Moshi backend port |
-| `MOSHI_WS_SCHEME` | `wss` | Moshi WebSocket scheme (`ws` or `wss`) |
+| `MOSHI_WS_SCHEME` | `ws` | Moshi WebSocket scheme (`ws` or `wss`) |
 | `MOSHI_WS_URL` | *(empty)* | Full Moshi WebSocket URL (overrides host/port) |
+| `MOSHI_USE_SSL` | `false` | Enable SSL/TLS on moshi backend |
 | `APP_HOST` | `0.0.0.0` | Web server bind address |
 | `DEFAULT_VOICE` | `NATF2` | Default voice prompt |
 | `DEFAULT_PERSONA` | *teacher prompt* | Default persona text |
@@ -311,32 +314,40 @@ All configuration is in `scenario6/.env` (copy from `.env.example`):
 ```
 Browser (http://localhost:8010)
         │
-        │  GET  /api/config  (voices, personas, settings)
-        │  WS   /ws/logs     (real-time log streaming)
-        │  WS   /proxy/moshi (same-origin WebSocket proxy)
+        │  GET  /api/config   (voices, personas, moshi WS URL)
+        │  WS   /ws/logs      (real-time log streaming)
+        │  WS   ws://host:8998/api/chat  ← direct to moshi
         │
    FastAPI Server (app.py, port 8010)
       │  • Serves web UI and configuration API
-      │  • Proxies browser WS → moshi backend (solves mixed-content)
-      │  • Auto-connects on page load via /proxy/moshi
+      │  • Provides /api/config with moshi backend URL
+      │  • Streams server-side logs via /ws/logs
       │
-      └── Moshi Backend (port 8998, HTTPS/WSS)
+      └── Moshi Backend (port 8998, HTTP/WS)
           └── PersonaPlex-7B-v1 (full-duplex speech-to-speech)
               ├── Audio Input  → Speech Understanding
               ├── LLM Backbone → Response Generation
               └── Audio Output → Speech Synthesis
 ```
 
-### WebSocket Proxy
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture reference.
 
-The browser page is served over HTTPS, but the moshi backend may run with a self-signed certificate. A direct browser → moshi WebSocket would trigger a mixed-content block. The FastAPI server exposes a **same-origin proxy** at `/proxy/moshi` that tunnels audio frames between the browser and the moshi server server-side, bypassing this restriction.
+### Direct WebSocket Connection
+
+Both services run over plain HTTP by default (`MOSHI_USE_SSL=false`). The browser connects **directly** to the moshi backend WebSocket at `ws://localhost:8998/api/chat` — no proxy hop, no extra latency. The frontend fetches the backend URL from `/api/config` on page load.
+
+> **Note:** A WebSocket proxy endpoint (`/proxy/moshi`) still exists in `app.py` as a fallback for HTTPS deployments where mixed-content restrictions apply. It is not used in the default HTTP configuration.
+
+### OpenTelemetry
+
+OpenTelemetry is **disabled by default** to avoid blocking the async event loop during audio streaming. Both the frontend (`app.py`) and moshi backend (`server.py`) check for the `OTEL_EXPORTER_OTLP_ENDPOINT` environment variable at startup and only enable telemetry if the endpoint is reachable. When running via Aspire, the `.WithOtlpExporter()` call is intentionally omitted from the AppHost so no OTLP env vars are injected.
 
 ### Connection State Machine
 
 | State | Description |
 |-------|-------------|
-| **Connecting** | Browser WebSocket to `/proxy/moshi` is being established |
-| **Warming up…** | Proxy connected; waiting for moshi `\x00` handshake byte (model loading) |
+| **Connecting** | Browser WebSocket to moshi backend is being established |
+| **Warming up…** | Connected; waiting for moshi `\x00` handshake byte (model loading) |
 | **Live** | Handshake received — microphone enabled, full-duplex streaming active |
 | **Disconnected** | Session ended; auto-reconnects after 4 s unless user closed intentionally |
 
@@ -355,7 +366,16 @@ scenario6/
 │   ├── index.html         # Web UI markup
 │   ├── styles.css         # Theme system & styling
 │   └── app.js             # Client-side application logic
+├── moshi/
+│   ├── Dockerfile         # Moshi backend Docker image
+│   └── start_moshi.sh     # Container entrypoint script
+├── third_party/
+│   └── moshi/             # Vendored moshi library (PersonaPlex runtime)
+├── AppHost/
+│   ├── Program.cs         # Aspire orchestration
+│   └── README.md          # Aspire-specific setup guide
 ├── docs/
+│   ├── ARCHITECTURE.md    # Full architecture reference
 │   └── USER_MANUAL.md     # Detailed setup and usage guide
 └── README.md              # This file
 ```
@@ -366,7 +386,7 @@ scenario6/
 |-------|----------|
 | `HF_TOKEN not configured` | Copy `.env.example` to `.env` and set your token |
 | `Access denied` on model download | Accept the license at [huggingface.co/nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1) |
-| WebSocket connection fails | Visit `https://localhost:8998` first to accept the self-signed SSL certificate |
+| WebSocket connection fails | Check that moshi backend is running on port 8998; verify with `curl http://localhost:8998/health` |
 | `libopus` not found | Install the Opus codec: `sudo apt install libopus-dev` |
 | Out of GPU memory | Set `CPU_OFFLOAD=true` in `.env` and install `accelerate` package |
 | Slow on CPU | GPU is strongly recommended; CPU mode will be very slow |
@@ -379,7 +399,7 @@ scenario6/
 |---------|-----|
 | Docker not running | Start Docker Desktop/Engine and re-run `aspire run` |
 | GPU not detected in container | Install NVIDIA Container Toolkit and set `USE_GPU=true` |
-| Moshi TLS warnings in browser | Visit the moshi HTTPS URL and accept the self-signed certificate |
+| Moshi TLS warnings in browser | Default uses HTTP; if SSL enabled, visit moshi HTTPS URL and accept self-signed cert |
 | `venv` not found (dev mode) | Run `python scenario6/setup_scenario6.py` from repo root to create virtual environment |
 | Python version error (dev mode) | Ensure Python 3.10-3.12 is installed (not 3.13). Use `py -3.12` on Windows |
 | Module import errors (dev mode) | Activate venv and re-run `setup_scenario6.py` to ensure all dependencies are installed |

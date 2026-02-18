@@ -19,7 +19,6 @@ var moshi = builder.AddDockerfile("scenario6-moshi", "..", "moshi/Dockerfile")
     .WithEnvironment("MOSHI_USE_SSL", useSsl ? "1" : "0")
     .WithEnvironment("MOSHI_HOST", "0.0.0.0")
     .WithEnvironment("MOSHI_PORT", moshiPort.ToString())
-    .WithOtlpExporter()
     .WithVolume("hf-model-cache-scenario6", "/root/.cache/huggingface")
     .WithLifetime(ContainerLifetime.Persistent);
 
@@ -55,7 +54,6 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithEnvironment("MOSHI_WS_SCHEME", useSsl ? "wss" : "ws")
         .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
         .WithHttpEndpoint(port: appPort, targetPort: 8010, name: "http")
-        .WithOtlpExporter()
         .WaitFor(moshi);
 }
 else
@@ -75,7 +73,6 @@ else
         .WithEnvironment("MOSHI_WS_SCHEME", useSsl ? "wss" : "ws")
         .WithEnvironment("MOSHI_WS_URL", moshi.GetEndpoint(moshiEndpointName))
         .WithEnvironment("HF_TOKEN", hfToken)
-        .WithOtlpExporter()
         .WaitFor(moshi);
 }
 
