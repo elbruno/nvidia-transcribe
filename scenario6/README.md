@@ -47,6 +47,12 @@ sudo dnf install opus-devel
 
 # macOS
 brew install opus
+
+# Windows (PowerShell) - requires Visual Studio Build Tools
+# Install vcpkg if you do not already have it
+git clone https://github.com/microsoft/vcpkg $env:USERPROFILE\vcpkg
+& $env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat
+& $env:USERPROFILE\vcpkg\vcpkg.exe install opus:x64-windows
 ```
 
 ### 2. Clone and Install PersonaPlex Moshi Package
@@ -55,8 +61,14 @@ brew install opus
 # Clone the PersonaPlex repo (contains the moshi server)
 git clone https://github.com/NVIDIA/personaplex.git /tmp/personaplex
 
+# Windows example
+git clone https://github.com/NVIDIA/personaplex.git $env:TEMP\personaplex
+
 # Install the moshi package
 pip install /tmp/personaplex/moshi/.
+
+# Windows example
+pip install $env:TEMP\personaplex\moshi\.
 ```
 
 ### 3. Install Scenario 6 Dependencies
@@ -78,6 +90,9 @@ pip install -r scenario6/requirements.txt
 ```bash
 # Copy the example env file
 cp scenario6/.env.example scenario6/.env
+
+# Windows example
+copy scenario6\.env.example scenario6\.env
 
 # Edit .env and set your Hugging Face token
 # Get a token at: https://huggingface.co/settings/tokens
