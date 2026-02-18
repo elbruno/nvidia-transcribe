@@ -28,70 +28,92 @@ A real-time, full-duplex voice conversation web app powered by **NVIDIA PersonaP
 
 ## Prerequisites
 
-- **Python** 3.10–3.12 (Python 3.13 is NOT supported by the moshi package)
-- **NVIDIA GPU** with CUDA support (recommended; CPU offload available)
-- **~14 GB VRAM** (or use CPU offloading)
-- **Opus codec** development library (`libopus-dev` on Ubuntu)
-- **Hugging Face account** — accept the [PersonaPlex model license](https://huggingface.co/nvidia/personaplex-7b-v1)
+### All Paths
 
-## Setup
+- **Python 3.10–3.12** (Python 3.13 is NOT supported)
+- **~14 GB VRAM** on GPU (or CPU offload available; will be slow)
+- **20+ GB free disk space** for model cache
+- **Hugging Face account** with [license accepted](https://huggingface.co/nvidia/personaplex-7b-v1)
+- **Hugging Face token** (get one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
 
-### Aspire Quickstart (Recommended)
+### For Aspire Path (Recommended)
 
-Run the full stack with one command from the AppHost directory:
+- **.NET 9 SDK** or later ([download](https://learn.microsoft.com/dotnet/core/install/))
+- **Docker** Desktop or Engine (running)
+- **NVIDIA Container Toolkit** (optional, for GPU support in containers)
+
+### For Manual Setup Path
+
+- **Opus development library**:
+  - Ubuntu/Debian: `sudo apt install libopus-dev`
+  - Fedora/RHEL: `sudo dnf install opus-devel`
+  - macOS: `brew install opus`
+  - Windows: NVIDIA Container Toolkit or Visual Studio Build Tools + vcpkg
+- **GPU drivers + CUDA** (if using GPU; CPU mode available but slow)
+
+## Quick Start (Choose Your Path)
+
+### 🚀 Path 1: Aspire (Recommended — 3 Steps, ~5 Minutes)
+
+**The easiest way to get started:** One command launches everything. Aspire handles all setup, dependencies, containers, and certificates automatically.
+
+#### Step 1: Set Environment
+
+Copy `.env.example` to `.env` and add your Hugging Face token:
+
+```powershell
+copy scenario6\.env.example scenario6\.env
+# Edit scenario6\.env and set: HF_TOKEN=hf_your_token_here
+```
+
+#### Step 2: Accept the Model License
+
+Visit [huggingface.co/nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1) and click **Accept** (while logged in).
+
+#### Step 3: Launch with Aspire
+
+Navigate to AppHost and run one command:
+
+```powershell
+# Windows
+cd scenario6\AppHost
+aspire run
+```
 
 ```bash
+# Linux/macOS
 cd scenario6/AppHost
 aspire run
 ```
 
-First run notes:
-- Expect a large model download (~14 GB) on first startup.
-- The moshi backend uses HTTPS/WSS with a self-signed cert (see Quick Start below).
-- The Aspire dashboard shows logs, health, and endpoints for both services.
-- Traces are sent to the Aspire dashboard automatically when using `aspire run`.
+The **Aspire Dashboard** opens automatically at `http://localhost:15000`. Click the **Web UI endpoint** link (usually `http://localhost:8010`) to open the app.
 
-### Quickstart (Automated)
+#### What Aspire Handles
 
-> **Do I need to create a venv first?**
-> **No.** The setup script creates and manages the `venv/` directory at the repo root automatically.
-> You do not need to follow the main README's Quick Start first.
-> If you already have a venv activated, the script installs into it instead.
+You don't need to do anything else. Aspire automatically:
 
-```powershell
-# 1) Install system dependencies (see below for your OS)
+✅ Installs Python dependencies (PyTorch, NVIDIA NeMo, Moshi, FastAPI)  
+✅ Downloads the PersonaPlex model (~14 GB) on first run  
+✅ Spins up Docker containers for the Moshi backend and FastAPI server  
+✅ Configures SSL/TLS certificates for secure WebSocket connections  
+✅ Provides a dashboard with live logs, health checks, and distributed traces  
+✅ Loads your `.env` configuration automatically
 
-# 2) Run the bootstrap script (creates venv, installs deps, copies .env)
-#    Windows: use the py launcher to ensure Python 3.12 is selected (3.13 is NOT supported)
-py -3.12 scenario6/setup_scenario6.py
+#### First Run Timeline
 
-# Optional: write your Hugging Face token directly into .env
-# py -3.12 scenario6/setup_scenario6.py --hf-token hf_your_token_here
+| Step | Time |
+|------|------|
+| Build Docker images | 2–3 minutes |
+| Download model | 5–10 minutes (depends on internet) |
+| Start services | 1–2 minutes |
+| **Total** | **~10–15 minutes** (one-time only) |
+| **Subsequent runs** | **~30–60 seconds** (using cached model) |
 
-# Linux/macOS
-python3.12 scenario6/setup_scenario6.py
-```
+### 📋 Path 2: Manual Setup (Alternative)
 
-Next steps:
-1. **Activate the virtual environment** created by the script:
-   ```powershell
-   # Windows
-   venv\Scripts\activate
-   ```
-   ```bash
-   # Linux/macOS
-   source venv/bin/activate
-   ```
-2. Set `HF_TOKEN` in `scenario6/.env` (if you did not pass `--hf-token`).
-3. Accept the model license: https://huggingface.co/nvidia/personaplex-7b-v1
-4. Run the app (from the repo root, with the venv active):
-   ```powershell
-   python scenario6/app.py
-   ```
+**If you can't or don't want to use Docker/Aspire**, use this path.
 
-For the full manual walkthrough and troubleshooting, see [scenario6/docs/USER_MANUAL.md](scenario6/docs/USER_MANUAL.md).
-
-### 1. Install System Dependencies
+#### Step 1: Install System Dependencies
 
 ```bash
 # Ubuntu/Debian
@@ -104,99 +126,92 @@ sudo dnf install opus-devel
 brew install opus
 
 # Windows (PowerShell) - requires Visual Studio Build Tools
-# Install vcpkg if you do not already have it
 git clone https://github.com/microsoft/vcpkg $env:USERPROFILE\vcpkg
 & $env:USERPROFILE\vcpkg\bootstrap-vcpkg.bat
 & $env:USERPROFILE\vcpkg\vcpkg.exe install opus:x64-windows
 ```
 
-### 2. Install PersonaPlex Moshi Package (Vendored)
+#### Step 2: Run Setup Script
+
+The setup script creates a venv, installs dependencies, and configures `.env`:
+
+```powershell
+# Windows
+py -3.12 scenario6/setup_scenario6.py
+
+# Or with token inline
+py -3.12 scenario6/setup_scenario6.py --hf-token hf_your_token_here
+```
 
 ```bash
-# Install the vendored moshi package
-pip install -e scenario6/third_party/moshi
+# Linux/macOS
+python3.12 scenario6/setup_scenario6.py
 ```
 
-### 3. Install Scenario 6 Dependencies
+#### Step 3: Activate Virtual Environment
+
+```powershell
+# Windows
+venv\Scripts\activate
+```
 
 ```bash
-# From the repo root, activate your venv
-source venv/bin/activate  # Linux/macOS
-# or: venv\Scripts\activate  # Windows
-
-# Install PyTorch with CUDA first (if not already installed)
-pip install torch --index-url https://download.pytorch.org/whl/cu121
-
-# Install scenario 6 dependencies
-pip install -r scenario6/requirements.txt
+# Linux/macOS
+source venv/bin/activate
 ```
 
-### 4. Configure the Environment
+#### Step 4: Accept Model License
 
-```bash
-# Copy the example env file
-cp scenario6/.env.example scenario6/.env
+Visit [huggingface.co/nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1) and accept the license (while logged in).
 
-# Windows example
-copy scenario6\.env.example scenario6\.env
+#### Step 5: Run the App
 
-# Edit .env and set your Hugging Face token
-# Get a token at: https://huggingface.co/settings/tokens
-```
+Two terminals needed:
 
-**Required**: Set `HF_TOKEN` in `scenario6/.env`:
-```
-HF_TOKEN=hf_your_actual_token_here
-```
-
-**Optional**: Load model from a local path (skip download):
-```
-PERSONAPLEX_MODEL_PATH=/path/to/personaplex-7b-v1
-```
-
-### 5. Accept Model License
-
-Visit [nvidia/personaplex-7b-v1](https://huggingface.co/nvidia/personaplex-7b-v1) and accept the license agreement while logged into your HuggingFace account.
-
-## Usage
-
-```bash
-python scenario6/app.py
-```
-
-This starts the **Web UI** at [http://localhost:8010](http://localhost:8010).
-
-Start the moshi backend separately:
-
+**Terminal 1 — Moshi backend:**
 ```bash
 mkdir -p ssl
 python -m moshi.server --ssl ./ssl --port 8998
 ```
 
-> **First launch**: The model (~14 GB) will be automatically downloaded and cached. Subsequent starts use the cached model.
+**Terminal 2 — Web server (from repo root, with venv active):**
+```bash
+python scenario6/app.py
+```
 
-### Quick Start
+Then open [http://localhost:8010](http://localhost:8010).
 
-1. Start the moshi backend (see above)
-2. Open [http://localhost:8010](http://localhost:8010)
-3. Accept the self-signed SSL certificate by visiting `https://localhost:8998` in your browser
-4. Click **Connect** to establish the WebSocket connection to the moshi backend
-5. Press and hold the **Talk** button to speak
-6. Release the button — PersonaPlex processes and responds with voice
+📚 Full manual guide: [scenario6/docs/USER_MANUAL.md](scenario6/docs/USER_MANUAL.md)
 
-### Preflight Checklist (New Users)
+## ▶️ Using Scenario 6
 
-- Python 3.10-3.12 installed (3.12 recommended)
-- GPU drivers + CUDA installed (if using GPU)
-- Hugging Face token and license acceptance
-- 20+ GB free disk space for model cache
-- Ports 8010/8998 available (or override via env vars)
+**Great! Your app is running.** Here's how to use it:
 
-### Certificate Handling
+### Your First Conversation
 
-- When moshi runs with `--ssl`, the browser must trust the self-signed cert.
-- Visit `https://<moshi-host>:<moshi-port>` once to accept the certificate.
-- If you run moshi without SSL, set `MOSHI_WS_SCHEME=ws` or `MOSHI_WS_URL=ws://host:port`.
+1. **Open the Web UI** at [http://localhost:8010](http://localhost:8010)
+2. **Select a voice** from the left sidebar (default: NATF2 — female, natural)
+3. **Choose a persona** (default: teacher) or write your own
+4. **Press and hold the Talk button** to speak
+5. **Release** — PersonaPlex listens and responds with voice
+6. **Listen** — Audio plays in real-time
+
+### Dashboard (Aspire Only)
+
+When using Aspire:
+
+| Feature | What to Look For |
+|---------|------------------|
+| **Dashboard** | http://localhost:15000 (auto-opens) |
+| **Service Health** | Green checkmarks = all good |
+| **Live Logs** | Click a service name to see logs in real-time |
+| **Traces** | View request traces for debugging |
+| **Endpoints** | Click the Web UI link to open the app |
+
+### Certificate Handling (Manual Setup Only)
+
+- First time only: Visit `https://localhost:8998` and accept the self-signed certificate
+- Or disable SSL by setting `MOSHI_WS_SCHEME=ws` in `.env`
 
 ### Port and Host Overrides
 
