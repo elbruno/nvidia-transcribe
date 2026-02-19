@@ -3,24 +3,18 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>NvidiaTranscribe.AppHost</RootNamespace>
+    <RootNamespace>PersonaPlex.AppHost</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsAspireHost>true</IsAspireHost>
     <NoWarn>$(NoWarn);ASPIREHOSTINGPYTHON001;NETSDK1228</NoWarn>
     <EnableAspireWorkloadDeprecationWarning>false</EnableAspireWorkloadDeprecationWarning>
-	  <!-- Display name shown in Aspire dashboard (top-left) -->
-	  <AssemblyTitle>NVidia Transcriber</AssemblyTitle>
-	  <UserSecretsId>110b1763-9918-4281-bcd7-69b213799e5f</UserSecretsId>
+    <AssemblyTitle>PersonaPlex Voice (Scenario 6)</AssemblyTitle>
+    <UserSecretsId>f2b0a2af-92b2-4a37-87c7-55b0a66f17fe</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Python" Version="13.1.1" />
-    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.1.1" />  
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../clients/webapp/TranscriptionWebApp2.csproj" />
   </ItemGroup>
 
 </Project>

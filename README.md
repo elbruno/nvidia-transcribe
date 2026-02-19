@@ -2,7 +2,7 @@
 
 > 🎙️ Demo repository for the **[Build a Voice-Enabled AI Agent in Minutes](https://developer.microsoft.com/en-us/reactor/events/26649/)** session at [Microsoft Reactor AI Apps & Agents Dev Days](https://developer.microsoft.com/en-us/reactor/series/s-1590/) (February 10, 2026). Brought to you by Microsoft & NVIDIA.
 
-Local audio transcription using NVIDIA ASR models via the NeMo framework, organized into five scenarios:
+Local audio transcription using NVIDIA ASR models via the NeMo framework, organized into six scenarios:
 
 | Scenario | Folder | Model | Use Case |
 |----------|--------|-------|----------|
@@ -11,6 +11,7 @@ Local audio transcription using NVIDIA ASR models via the NeMo framework, organi
 | **3. Multilingual** | [`scenario3/`](scenario3/) | Canary-1B (Multilingual) | Spanish, English, German, French |
 | **4. Client-Server** | [`scenario4/`](scenario4/) | Parakeet + Canary | REST API, .NET Aspire, Blazor web app, NIM LLM integration |
 | **5. Voice Agent** | [`scenario5/`](scenario5/) | Parakeet + FastPitch + HiFiGAN + TinyLlama | Real-time voice agent with ASR, TTS, and Smart Mode LLM |
+| **6. PersonaPlex Voice** | [`scenario6/`](scenario6/) | PersonaPlex-7B-v1 | Full-duplex real-time voice conversation with persona control |
 
 ## Quick Start
 
@@ -34,6 +35,13 @@ cd scenario5
 pip install -r requirements.txt
 python app.py
 # Open http://localhost:8000 in your browser
+
+# Scenario 6: PersonaPlex Voice Conversation
+cd scenario6
+cp .env.example .env  # Set HF_TOKEN in .env
+pip install -r requirements.txt
+python app.py
+# Open http://localhost:8010 in your browser
 ```
 
 ## Documentation
@@ -46,6 +54,8 @@ python app.py
 | [scenario4/README.md](scenario4/README.md) | Scenario 4 full documentation |
 | [scenario4/docs/](scenario4/docs/) | Architecture, deployment, testing guides |
 | [scenario5/README.md](scenario5/README.md) | Scenario 5 voice agent documentation |
+| [scenario6/README.md](scenario6/README.md) | Scenario 6 PersonaPlex voice conversation |
+| [scenario6/docs/USER_MANUAL.md](scenario6/docs/USER_MANUAL.md) | PersonaPlex setup and usage guide |
 
 ## Requirements
 
@@ -69,4 +79,5 @@ The [`slides/`](slides/) folder contains visual references from the **Microsoft 
 - [NVIDIA FastPitch Model](https://huggingface.co/nvidia/tts_en_fastpitch) — English TTS, CC-BY-4.0
 - [NVIDIA HiFi-GAN Model](https://huggingface.co/nvidia/tts_en_hifigan) — Vocoder, CC-BY-4.0
 - [TinyLlama-1.1B-Chat](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0) — LLM for Smart Mode, Apache-2.0
+- [NVIDIA PersonaPlex-7B-v1](https://huggingface.co/nvidia/personaplex-7b-v1) — Full-duplex speech-to-speech, NVIDIA Open Model License
 - [Azure Deployment Example](https://huggingface.co/docs/microsoft-azure/foundry/examples/deploy-nvidia-parakeet-asr)
