@@ -1,0 +1,62 @@
+# Scenario 6 – Microsoft Agent Framework + Local LLM (TinyLlama via Ollama)
+#
+# Usage:
+#   1. Start Ollama and pull TinyLlama:
+#        docker compose up ollama -d
+#        docker compose run --rm ollama-init
+#   2. Run the .NET chat console:
+#        docker compose up agentchat
+#
+# To swap the model, set MODEL_NAME=<model> and restart agentchat.
+# Any model available in Ollama (https://ollama.com/library) can be used.
+
+services:
+
+  # ── Ollama: local OpenAI-compatible LLM server ─────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: scenario6-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # GPU passthrough (requires NVIDIA Container Toolkit on host).
+    # Comment out the 'deploy' block to run on CPU (slower but no GPU required).
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── One-off init container: pulls TinyLlama the first time ─────────────────
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: scenario6-ollama-init
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${MODEL_NAME:-tinyllama}"]
+    profiles:
+      - init   # Run with: docker compose --profile init up ollama-init
+
+  # ── .NET console chat app ──────────────────────────────────────────────────
+  agentchat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scenario6-agentchat
+    depends_on:
+      - ollama
+    environment:
+      - LLM_ENDPOINT_URL=http://ollama:11434/v1/
+      - MODEL_NAME=${MODEL_NAME:-tinyllama}
+      - LLM_API_KEY=not-required
+    stdin_open: true
+    tty: true
+
+volumes:
+  ollama-data:
